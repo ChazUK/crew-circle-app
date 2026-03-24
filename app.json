@@ -29,11 +29,7 @@
     "web": {
       "favicon": "./src/assets/icons/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      "@clerk/expo",
-      "expo-secure-store"
-    ],
+    "plugins": ["expo-router", "@clerk/expo", "expo-secure-store"],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
