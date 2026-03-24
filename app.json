@@ -5,6 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icons/icon.png",
+    "scheme": "crew-circle",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./src/assets/icons/splash-icon.png",
