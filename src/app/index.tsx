@@ -5,7 +5,7 @@ import { layout } from "@/styles/layout";
 export default function WelcomeScreen() {
   return (
     <View style={layout.centered}>
-      <Text>Welcome to CircleCrew!</Text>
+      <Text>Welcome to CrewCircle!</Text>
     </View>
   );
 }
