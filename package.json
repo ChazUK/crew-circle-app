@@ -8,6 +8,8 @@
     "ios": "expo start --ios",
     "start": "expo start",
     "web": "expo start --web",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check"
   },
@@ -21,6 +23,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "lefthook": "^2.1.4",
     "oxfmt": "^0.42.0",
     "oxlint": "^1.57.0",
     "typescript": "~5.9.2"
