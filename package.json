@@ -13,10 +13,13 @@
     "fmt:check": "oxfmt --check"
   },
   "dependencies": {
+    "@clerk/expo": "^3.1.4",
     "expo": "55.0.8",
     "expo-router": "55.0.7",
+    "expo-secure-store": "~55.0.9",
     "expo-status-bar": "55.0.4",
-    "react": "19.2.0",
+    "react": "19.2.3",
+    "react-dom": "^19.2.3",
     "react-native": "0.83.2"
   },
   "devDependencies": {
@@ -25,5 +28,13 @@
     "oxfmt": "^0.42.0",
     "oxlint": "^1.57.0",
     "typescript": "~5.9.2"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "react",
+        "react-dom"
+      ]
+    }
   }
 }

@@ -1,11 +1,5 @@
-import { Text, View } from "react-native";
-
-import { layout } from "@/styles/layout";
+import { Redirect } from "expo-router";
 
 export default function WelcomeScreen() {
-  return (
-    <View style={layout.centered}>
-      <Text>Welcome to CrewCircle!</Text>
-    </View>
-  );
+  return <Redirect href="/(home)" />;
 }
