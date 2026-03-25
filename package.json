@@ -23,7 +23,9 @@
     "expo-status-bar": "55.0.4",
     "react": "19.2.3",
     "react-dom": "^19.2.3",
-    "react-native": "0.83.2"
+    "react-native": "0.83.2",
+    "react-native-safe-area-context": "~5.6.2",
+    "svix": "^1.89.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

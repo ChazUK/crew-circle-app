@@ -9,7 +9,6 @@ export const User = {
   profilePictureUrl: v.optional(v.string()),
   firstName: v.optional(v.string()),
   lastName: v.optional(v.string()),
-  fullName: v.optional(v.string()),
 
   userType: v.optional(v.union(v.literal("crew"), v.literal("production_manager"))),
   department: v.optional(v.string()),
