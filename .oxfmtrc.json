@@ -3,5 +3,5 @@
   "sortImports": {
     "enabled": true
   },
-  "ignorePatterns": []
+  "ignorePatterns": ["convex/_generated/**/*"]
 }
