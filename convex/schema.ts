@@ -3,7 +3,7 @@ import { v } from "convex/values";
 
 export const User = {
   email: v.string(),
-  clerkId: v.string(),
+  externalAuthId: v.string(),
   pushToken: v.optional(v.string()),
 
   profilePictureUrl: v.optional(v.string()),
@@ -11,7 +11,7 @@ export const User = {
   lastName: v.optional(v.string()),
   fullName: v.optional(v.string()),
 
-  userType: v.union(v.literal("crew"), v.literal("production_manager")),
+  userType: v.optional(v.union(v.literal("crew"), v.literal("production_manager"))),
   department: v.optional(v.string()),
   role: v.optional(v.string()),
   yearsExperience: v.optional(v.number()),
@@ -34,5 +34,5 @@ export const User = {
 };
 
 export default defineSchema({
-  users: defineTable(User).index("byClerkId", ["clerkId"]),
+  users: defineTable(User).index("byExternalAuthId", ["externalAuthId"]),
 });

@@ -1,10 +1,13 @@
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexReactClient, useConvexAuth } from "convex/react";
+import { useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+import { api } from "../../convex/_generated/api";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 if (!publishableKey) throw new Error("Add your Clerk Publishable Key to the .env file");
@@ -28,18 +31,38 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { isLoading, isAuthenticated } = useConvexAuth();
+  const upsertUser = useMutation(api.users.upsertUser);
+
+  // True once the user record has been created/confirmed in the database.
+  // Prevents routing to protected screens before the user doc exists.
+  const [isUserReady, setIsUserReady] = useState(false);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isAuthenticated) {
+      setIsUserReady(false);
+      return;
+    }
+
+    upsertUser()
+      .then(() => setIsUserReady(true))
+      .catch((err) => console.error("Failed to upsert user:", err));
+  }, [isAuthenticated]);
+
+  // Keep the splash visible until auth has resolved AND (if authenticated)
+  // the user record is confirmed to exist.
+  useEffect(() => {
+    if (!isLoading && (!isAuthenticated || isUserReady)) {
       SplashScreen.hide();
     }
-  }, [isLoading]);
+  }, [isLoading, isAuthenticated, isUserReady]);
 
-  if (isLoading) return null;
+  // Render nothing while loading or while the user record is being created,
+  // so the splash screen remains visible rather than flashing a blank screen.
+  if (isLoading || (isAuthenticated && !isUserReady)) return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={isAuthenticated}>
+      <Stack.Protected guard={isAuthenticated && isUserReady}>
         <Stack.Screen name="(home)" />
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated}>

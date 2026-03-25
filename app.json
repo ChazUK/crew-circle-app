@@ -21,9 +21,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.crewcircle.crewcircle"
     },
-    "web": {
-      "favicon": "./src/assets/icons/favicon.png"
-    },
     "plugins": [
       "expo-router",
       "@clerk/expo",
