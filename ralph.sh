@@ -4,8 +4,11 @@
 # Spawns N Claude Code agents in parallel. Each agent:
 #   1. Claims the oldest open, unblocked GitHub issue
 #   2. Implements it in a git worktree (TDD, lint, type-check)
-#   3. Creates a pull request
-#   4. Waits for merge, closes the issue, then loops
+#   3. Creates a pull request and moves on to the next issue
+#
+# PRs are reviewed by HITL. Re-run ralph.sh after merging
+# to pick up newly available issues. GitHub auto-closes issues via
+# "Closes #N" in the PR body.
 #
 # Pattern: https://www.aihero.dev/tips-for-ai-coding-with-ralph-wiggum
 #
@@ -13,12 +16,13 @@
 #   gh        — GitHub CLI (run: gh auth login)
 #   claude    — Claude Code CLI (run: npm install -g @anthropic-ai/claude-code)
 #   git, jq
-#   ANTHROPIC_API_KEY set in environment
+#   ANTHROPIC_API_KEY — must be set in ~/.zshrc or ~/.bashrc (NOT inline/current session),
+#                       then restart Docker Desktop so the sandbox daemon picks it up
 #
 # Usage:
 #   ./ralph.sh                         # 3 agents, local mode
 #   RALPH_AGENTS=5 ./ralph.sh          # 5 parallel agents
-#   RALPH_SANDBOX=1 ./ralph.sh         # Isolate each agent in Docker (recommended for AFK)
+#   RALPH_SANDBOX=1 ./ralph.sh         # Isolate each agent in a Docker sandbox microVM (recommended for AFK)
 #   RALPH_PRD_NUMBER=42 ./ralph.sh     # Point agents at a PRD issue for context
 #   RALPH_MAX_ITER=10 ./ralph.sh       # Cap at 10 issues per agent then stop
 
@@ -30,8 +34,6 @@ set -euo pipefail
 REPO="${RALPH_REPO:-ChazUK/crew-circle-app}"
 NUM_AGENTS="${RALPH_AGENTS:-5}"
 MAX_ITER="${RALPH_MAX_ITER:-20}"       # Max issues per agent before it self-terminates
-PR_POLL_SECS="${RALPH_POLL_SECS:-60}"  # How often (seconds) to check if a PR merged
-PR_TIMEOUT="${RALPH_PR_TIMEOUT:-7200}" # Stop waiting for a PR after this many seconds (2h)
 SANDBOX="${RALPH_SANDBOX:-0}"          # 1 = wrap each claude invocation in Docker
 PRD_NUMBER="${RALPH_PRD_NUMBER:-}"     # GitHub issue # that contains the PRD (optional)
 
@@ -103,14 +105,25 @@ check_deps() {
     exit 1
   fi
 
-  if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-    err "ANTHROPIC_API_KEY is not set."
-    exit 1
-  fi
-
-  if [[ "$SANDBOX" == "1" ]] && ! command -v docker &>/dev/null; then
-    warn "RALPH_SANDBOX=1 but docker not found — falling back to local execution"
-    SANDBOX=0
+  if [[ "$SANDBOX" == "1" ]]; then
+    if ! command -v docker &>/dev/null; then
+      warn "RALPH_SANDBOX=1 but docker not found — falling back to local execution"
+      SANDBOX=0
+    else
+      # In sandbox mode the daemon runs independently of this shell session.
+      # ANTHROPIC_API_KEY must be set in ~/.zshrc or ~/.bashrc and Docker Desktop
+      # must have been restarted after — setting it inline won't reach the daemon.
+      if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+        warn "ANTHROPIC_API_KEY not found in current shell."
+        warn "For sandbox mode it must be set in ~/.zshrc or ~/.bashrc with Docker Desktop restarted."
+        warn "Continuing — the sandbox daemon may still have it if already configured."
+      fi
+    fi
+  else
+    if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+      err "ANTHROPIC_API_KEY is not set."
+      exit 1
+    fi
   fi
 }
 
@@ -171,37 +184,6 @@ mark_blocked() {
     --repo "$REPO" 2>/dev/null || true
 }
 
-close_issue() {
-  local number="$1"
-  gh issue close "$number" \
-    --repo "$REPO" \
-    --comment "Closed automatically by a Ralph agent after the implementing PR was merged." \
-    2>/dev/null || true
-  release_issue "$number"
-}
-
-# Poll until a PR on `branch` is merged, closed, or times out.
-# Returns: 0 = merged, 1 = timeout, 2 = closed-without-merge
-wait_for_pr_merge() {
-  local branch="$1"
-  local elapsed=0
-
-  while [[ $elapsed -lt $PR_TIMEOUT ]]; do
-    local state
-    state=$(gh pr view "$branch" \
-      --repo "$REPO" --json state \
-      --jq '.state' 2>/dev/null || echo "UNKNOWN")
-
-    case "$state" in
-      MERGED)  return 0 ;;
-      CLOSED)  return 2 ;;
-    esac
-
-    sleep "$PR_POLL_SECS"
-    elapsed=$((elapsed + PR_POLL_SECS))
-  done
-  return 1
-}
 
 # ─────────────────────────────────────────────────────────────
 # Agent prompt
@@ -242,17 +224,10 @@ ${prd_section}
 - **GitHub repo:** ${REPO}
 - **Working branch:** \`${branch}\` (already checked out — do NOT switch branches)
 - **Stack:** React Native (Expo) + Convex backend, TypeScript strict mode
-- **Domain:** UK film/TV production crew coordination (see \`UBIQUITOUS_LANGUAGE.md\`)
+- **Domain:** UK film/TV production crew short term hiring tool (see \`UBIQUITOUS_LANGUAGE.md\`)
 
 ## Available Skills
-Use these Claude Code skills as needed (invoke with /skill-name):
-  /tdd                             — red-green-refactor loop
-  /ubiquitous-language             — extract / verify domain terms
-  /convex-migration-helper         — schema migrations
-  /convex-performance-audit        — performance issues
-  /convex-create-component         — new Convex components
-  /create-architectural-decision-record — decisions that deserve an ADR
-  /github-issues                   — manage issues / labels
+Use these /skills to list all available skills to help you with specific tasks (invoke with /skill-name):
 
 ---
 
@@ -262,11 +237,26 @@ Use these Claude Code skills as needed (invoke with /skill-name):
 Create \`progress.txt\` in the repo root now (do NOT commit it — add to .gitignore if missing):
 
 \`\`\`
-Issue: #${issue_number} — ${issue_title}
-Status: started
-Steps completed: []
-Current step: understanding the issue
-Decisions: []
+{
+  "issue": {
+    "number": ${issue_number},
+    "title": "${issue_title}"
+  },
+  "status": "started",
+  "steps_completed": [],
+  "current_step": "understanding the issue",
+  "decisions": [],
+  "blockers": []
+}
+\`\`\`
+
+Update it at the start of every step so a future iteration can resume without re-exploring.
+
+### Step 1 — Understand before implementing
+- Re-read the issue carefully
+- Read \`UBIQUITOUS_LANGUAGE.md\` for domain terminology
+- Explore the relevant files (\`src/\`, \`convex/\`) before touching anything
+- Check \`git log --oneline -20\` for recent related changes
 Blockers: []
 \`\`\`
 
@@ -287,6 +277,7 @@ For new functionality:
 1. Write a failing test first
 2. Make it pass with minimal code
 3. Refactor
+4. Test for edge cases
 
 Use \`/tdd\` skill if helpful for structuring the loop.
 
@@ -296,7 +287,7 @@ Run these in order and fix every failure before continuing:
 npx tsc --noEmit          # type-checking (zero errors allowed)
 npm run lint              # oxlint
 npm run fmt:check         # oxfmt formatting
-npm run test 2>/dev/null || echo "no test script yet"
+npm run test 2>/dev/null  # run test suites
 \`\`\`
 
 Do NOT open a PR if any check fails. Fix the failures first.
@@ -319,7 +310,7 @@ git push origin ${branch}
 gh pr create \\
   --repo ${REPO} \\
   --base main \\
-  --title "type(scope): description (closes #${issue_number})" \\
+  --title "type(scope): #${issue_number} description" \\
   --body "$(cat <<'PRBODY'
 ## Summary
 <!-- What changed and why -->
@@ -374,19 +365,16 @@ run_claude() {
   local log_file="$3"
 
   if [[ "$SANDBOX" == "1" ]]; then
-    # Docker sandbox mode: mount the worktree read-write, home dir read-only.
-    # The container can edit code and run git/gh, but cannot touch host SSH keys
-    # or other sensitive files outside the repo.
-    docker run --rm \
-      --volume "$worktree:/workspace:rw" \
-      --volume "$prompt_file:/prompt.txt:ro" \
-      --workdir /workspace \
-      --env ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
-      --env GH_TOKEN="${GH_TOKEN:-$(gh auth token 2>/dev/null || echo "")}" \
-      --env GITHUB_TOKEN="${GH_TOKEN:-$(gh auth token 2>/dev/null || echo "")}" \
-      --network host \
-      ghcr.io/anthropics/claude-code:latest \
-      claude --dangerously-skip-permissions -p "$(cat /prompt.txt)" \
+    # Docker sandbox mode: each agent runs in an isolated microVM via `docker sandbox run`.
+    # The worktree directory syncs at the same absolute path inside the VM.
+    # Each worktree gets its own named sandbox (claude-agent-N); they are fully isolated
+    # from each other and from the host outside the workspace.
+    # Requires: Docker Desktop 4.58+ (macOS/Windows).
+    # IMPORTANT: ANTHROPIC_API_KEY must be in ~/.zshrc or ~/.bashrc and Docker Desktop
+    # restarted — the daemon ignores variables set only in the current shell session.
+    docker sandbox run claude "$worktree" \
+      --dangerously-skip-permissions \
+      -p "$(cat "$prompt_file")" \
       2>&1 | tee "$log_file"
   else
     # Local mode: run claude directly in the worktree
@@ -479,38 +467,10 @@ agent_loop() {
 
     # ── Parse the promise signal ───────────────────────────────
     if echo "$output" | grep -q '<promise>COMPLETE</promise>'; then
-      agent_log "$agent_id" "#$issue_number — COMPLETE signal received"
-
-      # Verify a PR was actually created
-      local pr_state
-      pr_state=$(gh pr view "$branch" \
-        --repo "$REPO" --json state \
-        --jq '.state' 2>/dev/null || echo "NONE")
-
-      if [[ "$pr_state" == "NONE" ]]; then
-        warn "Agent #$agent_id — COMPLETE but no PR found for $branch. Releasing claim."
-        release_issue "$issue_number"
-      else
-        agent_log "$agent_id" "PR open for #$issue_number — polling for merge (up to ${PR_TIMEOUT}s)..."
-
-        local wait_result=0
-        wait_for_pr_merge "$branch" || wait_result=$?
-
-        case $wait_result in
-          0)
-            agent_log "$agent_id" "PR merged! Closing issue #$issue_number"
-            close_issue "$issue_number"
-            ;;
-          2)
-            warn "Agent #$agent_id — PR closed without merge for #$issue_number. Releasing claim."
-            release_issue "$issue_number"
-            ;;
-          *)
-            warn "Agent #$agent_id — PR poll timed out for #$issue_number. Releasing claim."
-            release_issue "$issue_number"
-            ;;
-        esac
-      fi
+      agent_log "$agent_id" "#$issue_number — COMPLETE. PR created, moving on."
+      # Leave the ralph-in-progress label on the issue so it won't be re-claimed.
+      # GitHub will auto-close the issue when the PR is merged ("Closes #N").
+      # To release a stuck claim manually: gh issue edit N --remove-label ralph-in-progress
 
     elif echo "$output" | grep -q '<promise>BLOCKED</promise>'; then
       agent_log "$agent_id" "#$issue_number — BLOCKED signal received"
@@ -521,8 +481,13 @@ agent_loop() {
       release_issue "$issue_number"
     fi
 
-    # ── Tidy up worktree ───────────────────────────────────────
+    # ── Tidy up worktree and sandbox ──────────────────────────
     git -C "$SCRIPT_DIR" worktree remove --force "$worktree" 2>/dev/null || true
+    # Sandboxes persist until explicitly removed — clean up to avoid accumulation.
+    # The sandbox name mirrors the workspace dirname: claude-agent-N
+    if [[ "$SANDBOX" == "1" ]]; then
+      docker sandbox rm "claude-agent-${agent_id}" 2>/dev/null || true
+    fi
 
     # Brief pause before grabbing the next issue
     sleep 5
@@ -535,11 +500,11 @@ agent_loop() {
 # Main
 # ─────────────────────────────────────────────────────────────
 main() {
-  info "Ralph Wiggum — autonomous issue solver"
-  info "  repo:       $REPO"
-  info "  agents:     $NUM_AGENTS"
-  info "  max iter:   $MAX_ITER issues/agent"
-  info "  sandbox:    $([ "$SANDBOX" == "1" ] && echo "Docker" || echo "local")"
+  info "Ralph — autonomous issue solver"
+  info "  repo:      $REPO"
+  info "  agents:    $NUM_AGENTS"
+  info "  max iter:  $MAX_ITER issues/agent"
+  info "  sandbox:   $([ "$SANDBOX" == "1" ] && echo "Docker" || echo "local")"
   [[ -n "$PRD_NUMBER" ]] && info "  PRD issue:  #$PRD_NUMBER"
   echo >&2
 
