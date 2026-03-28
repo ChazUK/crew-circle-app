@@ -1,9 +1,9 @@
-import { internalMutation } from "@convex/_generated/server";
 import { v } from "convex/values";
 
+import { internalMutation } from "../../_generated/server";
 import { upsertUserRecord } from "../_helpers";
 
-export const createFromWebhook = internalMutation({
+export const userCreated = internalMutation({
   args: {
     externalAuthId: v.string(),
     email: v.string(),

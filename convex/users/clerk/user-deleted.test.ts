@@ -5,15 +5,15 @@ import { internal } from "../../_generated/api";
 import schema from "../../schema";
 import { modules } from "../../test-modules";
 
-describe("deleteFromWebhook", () => {
+describe("userDeleted", () => {
   test("removes the user from the database", async () => {
     const t = convexTest(schema, modules);
     const externalAuthId = "clerk_del_1";
-    await t.mutation(internal.users.webhooks.createFromWebhook, {
+    await t.mutation(internal.users.clerk.userCreated, {
       externalAuthId,
       email: "delete@example.com",
     });
-    await t.mutation(internal.users.webhooks.deleteFromWebhook, { externalAuthId });
+    await t.mutation(internal.users.clerk.userDeleted, { externalAuthId });
     const user = await t.run((ctx) =>
       ctx.db
         .query("users")
@@ -26,7 +26,7 @@ describe("deleteFromWebhook", () => {
   test("does nothing when user does not exist", async () => {
     const t = convexTest(schema, modules);
     await expect(
-      t.mutation(internal.users.webhooks.deleteFromWebhook, { externalAuthId: "nonexistent" }),
+      t.mutation(internal.users.clerk.userDeleted, { externalAuthId: "nonexistent" }),
     ).resolves.toBeNull();
   });
 });

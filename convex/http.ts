@@ -79,7 +79,7 @@ const handleClerkWebhook = httpAction(async (ctx, request) => {
         event.data;
       const primaryEmail = email_addresses.find((e) => e.id === primary_email_address_id);
 
-      await ctx.runMutation(internal.users.webhooks.createFromWebhook, {
+      await ctx.runMutation(internal.users.clerk.userCreated, {
         externalAuthId: id,
         email: primaryEmail?.email_address ?? "",
         firstName: first_name ?? undefined,
@@ -94,7 +94,7 @@ const handleClerkWebhook = httpAction(async (ctx, request) => {
         event.data;
       const primaryEmail = email_addresses.find((e) => e.id === primary_email_address_id);
 
-      await ctx.runMutation(internal.users.webhooks.updateFromWebhook, {
+      await ctx.runMutation(internal.users.clerk.userUpdated, {
         externalAuthId: id,
         email: primaryEmail?.email_address,
         firstName: first_name ?? undefined,
@@ -105,7 +105,7 @@ const handleClerkWebhook = httpAction(async (ctx, request) => {
     }
 
     case "user.deleted": {
-      await ctx.runMutation(internal.users.webhooks.deleteFromWebhook, {
+      await ctx.runMutation(internal.users.clerk.userDeleted, {
         externalAuthId: event.data.id,
       });
       break;

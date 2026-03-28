@@ -5,10 +5,10 @@ import { internal } from "../../_generated/api";
 import schema from "../../schema";
 import { modules } from "../../test-modules";
 
-describe("createFromWebhook", () => {
+describe("userCreated", () => {
   test("creates a new user and returns their id", async () => {
     const t = convexTest(schema, modules);
-    const userId = await t.mutation(internal.users.webhooks.createFromWebhook, {
+    const userId = await t.mutation(internal.users.clerk.userCreated, {
       externalAuthId: "clerk_wh_1",
       email: "webhook@example.com",
       firstName: "Jane",
@@ -20,14 +20,14 @@ describe("createFromWebhook", () => {
   test("returns existing id if called twice with same externalAuthId", async () => {
     const t = convexTest(schema, modules);
     const args = { externalAuthId: "clerk_wh_2", email: "existing@example.com" };
-    const first = await t.mutation(internal.users.webhooks.createFromWebhook, args);
-    const second = await t.mutation(internal.users.webhooks.createFromWebhook, args);
+    const first = await t.mutation(internal.users.clerk.userCreated, args);
+    const second = await t.mutation(internal.users.clerk.userCreated, args);
     expect(first).toEqual(second);
   });
 
   test("persists all optional fields", async () => {
     const t = convexTest(schema, modules);
-    await t.mutation(internal.users.webhooks.createFromWebhook, {
+    await t.mutation(internal.users.clerk.userCreated, {
       externalAuthId: "clerk_wh_full",
       email: "full@example.com",
       firstName: "Full",

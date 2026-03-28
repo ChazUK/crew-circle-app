@@ -1,9 +1,9 @@
-import { internalMutation } from "@convex/_generated/server";
 import { v } from "convex/values";
 
+import { internalMutation } from "../../_generated/server";
 import { userByExternalId } from "../_helpers";
 
-export const deleteFromWebhook = internalMutation({
+export const userDeleted = internalMutation({
   args: { externalAuthId: v.string() },
   handler: async (ctx, { externalAuthId }) => {
     const user = await userByExternalId(ctx, externalAuthId);
