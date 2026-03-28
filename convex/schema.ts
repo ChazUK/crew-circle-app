@@ -10,7 +10,7 @@ export const User = {
   firstName: v.optional(v.string()),
   lastName: v.optional(v.string()),
 
-  userType: v.optional(v.union(v.literal("crew"), v.literal("production_manager"))),
+  userType: v.optional(v.union(v.literal("crew"), v.literal("production-manager"))),
   department: v.optional(v.string()),
   role: v.optional(v.string()),
   yearsExperience: v.optional(v.number()),
