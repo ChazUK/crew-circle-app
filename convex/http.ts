@@ -105,7 +105,7 @@ const handleClerkWebhook = httpAction(async (ctx, request) => {
     }
 
     case "user.deleted": {
-      await ctx.runMutation(internal.users.webhooks.deleteByExternalId, {
+      await ctx.runMutation(internal.users.webhooks.deleteFromWebhook, {
         externalAuthId: event.data.id,
       });
       break;

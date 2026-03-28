@@ -1,5 +1,5 @@
-import { mutation } from "../_generated/server";
-import { upsertUserRecord } from "./_helpers";
+import { mutation } from "../../_generated/server";
+import { upsertUserRecord } from "../_helpers";
 
 export const upsertUser = mutation({
   args: {},
