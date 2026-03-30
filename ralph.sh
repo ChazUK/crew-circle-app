@@ -16,8 +16,6 @@
 #   gh        — GitHub CLI (run: gh auth login)
 #   claude    — Claude Code CLI (run: npm install -g @anthropic-ai/claude-code)
 #   git, jq
-#   ANTHROPIC_API_KEY — must be set in ~/.zshrc or ~/.bashrc (NOT inline/current session),
-#                       then restart Docker Desktop so the sandbox daemon picks it up
 #
 # Usage:
 #   ./ralph.sh                         # 3 agents, local mode
@@ -39,6 +37,8 @@ PRD_NUMBER="${RALPH_PRD_NUMBER:-}"     # GitHub issue # that contains the PRD (o
 
 CLAIMED_LABEL="ralph-in-progress"
 BLOCKED_LABEL="blocked"
+PRD_LABEL="prd"
+ASSIGNEE="ChazUK"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RALPH_DIR="$SCRIPT_DIR/.ralph"
@@ -63,23 +63,30 @@ agent_log() {
 AGENT_PIDS=()
 
 cleanup() {
-  info "Shutting down — releasing any claimed issues..."
+  info "Shutting down — releasing any in-flight claims..."
   for pid in "${AGENT_PIDS[@]:-}"; do
     kill "$pid" 2>/dev/null || true
   done
-  # Release any labels left behind
+  # Release ralph-in-progress label from any issues still actively being worked on.
+  # Assignment to $ASSIGNEE stays as a permanent record so issues are never re-claimed.
   local claimed
   claimed=$(gh issue list \
     --repo "$REPO" --state open \
     --label "$CLAIMED_LABEL" \
     --json number --jq '.[].number' 2>/dev/null || true)
   for num in $claimed; do
-    warn "Releasing claim on issue #$num"
+    warn "Releasing in-flight claim on issue #$num"
     gh issue edit "$num" --remove-label "$CLAIMED_LABEL" --repo "$REPO" 2>/dev/null || true
   done
   # Prune worktrees
   git -C "$SCRIPT_DIR" worktree prune 2>/dev/null || true
   rm -rf "$WORKTREES_DIR"
+  # Remove persistent sandboxes now that all agents are done
+  if [[ "$SANDBOX" == "1" ]]; then
+    for i in $(seq 1 "$NUM_AGENTS"); do
+      docker sandbox rm "claude-agent-${i}" 2>/dev/null || true
+    done
+  fi
 }
 trap cleanup EXIT INT TERM
 
@@ -109,20 +116,6 @@ check_deps() {
     if ! command -v docker &>/dev/null; then
       warn "RALPH_SANDBOX=1 but docker not found — falling back to local execution"
       SANDBOX=0
-    else
-      # In sandbox mode the daemon runs independently of this shell session.
-      # ANTHROPIC_API_KEY must be set in ~/.zshrc or ~/.bashrc and Docker Desktop
-      # must have been restarted after — setting it inline won't reach the daemon.
-      if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-        warn "ANTHROPIC_API_KEY not found in current shell."
-        warn "For sandbox mode it must be set in ~/.zshrc or ~/.bashrc with Docker Desktop restarted."
-        warn "Continuing — the sandbox daemon may still have it if already configured."
-      fi
-    fi
-  else
-    if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-      err "ANTHROPIC_API_KEY is not set."
-      exit 1
     fi
   fi
 }
@@ -135,22 +128,29 @@ ensure_labels() {
     --color "fbca04" \
     --description "Claimed by a Ralph agent" \
     --repo "$REPO" 2>/dev/null || true
+  gh label create "$PRD_LABEL" \
+    --color "e4e669" \
+    --description "Product Requirements Document — skipped by Ralph agents" \
+    --repo "$REPO" 2>/dev/null || true
 }
 
-# Returns JSON of the oldest open, unclaimed, unblocked issue — or empty.
+# Returns JSON of the oldest open, unclaimed, unblocked, unassigned issue — or empty.
 find_next_issue() {
   gh issue list \
     --repo "$REPO" \
     --state open \
     --limit 200 \
-    --json number,title,body,labels,createdAt \
+    --json number,title,body,labels,assignees,createdAt \
     --jq "
       [
         .[] |
         select(
           (.labels | map(.name) |
-            (contains([\"$CLAIMED_LABEL\"]) or contains([\"$BLOCKED_LABEL\"]))
+            (contains([\"$BLOCKED_LABEL\"]) or contains([\"$PRD_LABEL\"]))
           ) | not
+        ) |
+        select(
+          (.assignees | map(.login) | contains([\"$ASSIGNEE\"])) | not
         )
       ]
       | sort_by(.createdAt)
@@ -159,21 +159,22 @@ find_next_issue() {
     " 2>/dev/null || true
 }
 
-# Atomically claim an issue by labelling it. Returns 0 if successful.
+# Atomically claim an issue by assigning it. Returns 0 if successful.
 claim_issue() {
   local number="$1"
-  gh issue edit "$number" --add-label "$CLAIMED_LABEL" --repo "$REPO" 2>/dev/null || return 1
+  gh issue edit "$number" --add-label "$CLAIMED_LABEL" --add-assignee "$ASSIGNEE" --repo "$REPO" 2>/dev/null || return 1
   # Re-read to guard against tiny race window between two agents
-  local labels
-  labels=$(gh issue view "$number" \
-    --repo "$REPO" --json labels \
-    --jq '.labels[].name' 2>/dev/null || echo "")
-  echo "$labels" | grep -q "^${CLAIMED_LABEL}$"
+  local assignees
+  assignees=$(gh issue view "$number" \
+    --repo "$REPO" --json assignees \
+    --jq '.assignees[].login' 2>/dev/null || echo "")
+  echo "$assignees" | grep -q "^${ASSIGNEE}$"
 }
 
 release_issue() {
   local number="$1"
-  gh issue edit "$number" --remove-label "$CLAIMED_LABEL" --repo "$REPO" 2>/dev/null || true
+  # Only called when losing a claim race — removes both label and assignment
+  gh issue edit "$number" --remove-label "$CLAIMED_LABEL" --remove-assignee "$ASSIGNEE" --repo "$REPO" 2>/dev/null || true
 }
 
 mark_blocked() {
@@ -182,6 +183,7 @@ mark_blocked() {
     --add-label "$BLOCKED_LABEL" \
     --remove-label "$CLAIMED_LABEL" \
     --repo "$REPO" 2>/dev/null || true
+  # Assignment to $ASSIGNEE stays as a permanent record
 }
 
 
@@ -370,10 +372,8 @@ run_claude() {
     # Each worktree gets its own named sandbox (claude-agent-N); they are fully isolated
     # from each other and from the host outside the workspace.
     # Requires: Docker Desktop 4.58+ (macOS/Windows).
-    # IMPORTANT: ANTHROPIC_API_KEY must be in ~/.zshrc or ~/.bashrc and Docker Desktop
-    # restarted — the daemon ignores variables set only in the current shell session.
-    docker sandbox run claude "$worktree" \
-      --dangerously-skip-permissions \
+    printf 'y\n' | docker sandbox run claude "$worktree" \
+      -- --dangerously-skip-permissions \
       -p "$(cat "$prompt_file")" \
       2>&1 | tee "$log_file"
   else
@@ -468,26 +468,21 @@ agent_loop() {
     # ── Parse the promise signal ───────────────────────────────
     if echo "$output" | grep -q '<promise>COMPLETE</promise>'; then
       agent_log "$agent_id" "#$issue_number — COMPLETE. PR created, moving on."
-      # Leave the ralph-in-progress label on the issue so it won't be re-claimed.
+      gh issue edit "$issue_number" --remove-label "$CLAIMED_LABEL" --repo "$REPO" 2>/dev/null || true
+      # Assignment to $ASSIGNEE stays permanently — prevents re-claiming on future runs.
       # GitHub will auto-close the issue when the PR is merged ("Closes #N").
-      # To release a stuck claim manually: gh issue edit N --remove-label ralph-in-progress
 
     elif echo "$output" | grep -q '<promise>BLOCKED</promise>'; then
       agent_log "$agent_id" "#$issue_number — BLOCKED signal received"
       mark_blocked "$issue_number"
 
     else
-      warn "Agent #$agent_id — no promise signal for #$issue_number. Check: $log_file"
-      release_issue "$issue_number"
+      warn "Agent #$agent_id — no promise signal for #$issue_number. Marking blocked. Check: $log_file"
+      mark_blocked "$issue_number"
     fi
 
-    # ── Tidy up worktree and sandbox ──────────────────────────
+    # ── Tidy up worktree (sandbox is reused across issues to avoid re-downloading the template) ──
     git -C "$SCRIPT_DIR" worktree remove --force "$worktree" 2>/dev/null || true
-    # Sandboxes persist until explicitly removed — clean up to avoid accumulation.
-    # The sandbox name mirrors the workspace dirname: claude-agent-N
-    if [[ "$SANDBOX" == "1" ]]; then
-      docker sandbox rm "claude-agent-${agent_id}" 2>/dev/null || true
-    fi
 
     # Brief pause before grabbing the next issue
     sleep 5
@@ -518,7 +513,7 @@ main() {
   for i in $(seq 1 "$NUM_AGENTS"); do
     agent_loop "$i" &
     AGENT_PIDS+=($!)
-    info "Agent #$i started (pid ${AGENT_PIDS[-1]})"
+    info "Agent #$i started (pid $!)"
     # Stagger starts to reduce issue-claiming races
     sleep 3
   done
