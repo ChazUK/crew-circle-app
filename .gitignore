@@ -43,3 +43,4 @@ yarn-error.*
 
 # testing
 /coverage
+progress.txt
