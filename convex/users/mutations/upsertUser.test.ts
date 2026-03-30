@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest";
 
 import { api } from "../../_generated/api";
 import schema from "../../schema";
-import { modules } from "../../test-modules";
 
 describe("upsertUser", () => {
   test("throws when not authenticated", async () => {
@@ -78,3 +77,5 @@ describe("upsertUser", () => {
     expect(user?.lastName).toBe("Smith");
   });
 });
+
+const modules = import.meta.glob("./**/*.ts");

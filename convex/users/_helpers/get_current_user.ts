@@ -1,6 +1,6 @@
 import { QueryCtx } from "@convex/_generated/server";
 
-import { userByExternalId } from "./user-by-external-id";
+import { userByExternalId } from "./user_by_external_id";
 
 export async function getCurrentUser(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();

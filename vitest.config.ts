@@ -13,7 +13,7 @@ export default defineConfig({
         "convex/_generated/**",
         "convex/auth.config.ts",
         "convex/schema.ts",
-        "convex/test-modules.ts",
+        "convex/_testModules.ts",
         "**/*.d.ts",
         "**/*.test.ts",
       ],

@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest";
 
 import { internal } from "../../_generated/api";
 import schema from "../../schema";
-import { modules } from "../../test-modules";
 
 describe("userDeleted", () => {
   test("removes the user from the database", async () => {
@@ -30,3 +29,5 @@ describe("userDeleted", () => {
     ).resolves.toBeNull();
   });
 });
+
+const modules = import.meta.glob("./**/*.ts");

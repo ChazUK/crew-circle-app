@@ -1,6 +1,6 @@
 import { MutationCtx } from "@convex/_generated/server";
 
-import { userByExternalId } from "./user-by-external-id";
+import { userByExternalId } from "./user_by_external_id";
 
 export async function upsertUserRecord(
   ctx: MutationCtx,

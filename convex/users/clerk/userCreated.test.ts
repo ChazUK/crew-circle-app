@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest";
 
 import { internal } from "../../_generated/api";
 import schema from "../../schema";
-import { modules } from "../../test-modules";
 
 describe("userCreated", () => {
   test("creates a new user and returns their id", async () => {
@@ -43,3 +42,5 @@ describe("userCreated", () => {
     expect(user?.profilePictureUrl).toBe("https://example.com/pic.jpg");
   });
 });
+
+const modules = import.meta.glob("./**/*.ts");

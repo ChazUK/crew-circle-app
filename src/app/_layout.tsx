@@ -1,13 +1,12 @@
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
+import { api } from "@convex/api";
 import { ConvexReactClient, useConvexAuth } from "convex/react";
 import { useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-
-import { api } from "../../convex/_generated/api";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 if (!publishableKey) throw new Error("Add your Clerk Publishable Key to the .env file");

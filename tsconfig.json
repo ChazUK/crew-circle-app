@@ -4,6 +4,8 @@
     "strict": true,
     "paths": {
       "@/*": ["./src/*"],
+      "@convex/api": ["./convex/_generated/api"],
+      "@convex/server": ["./convex/_generated/server"],
       "@convex/*": ["./convex/*"]
     }
   },

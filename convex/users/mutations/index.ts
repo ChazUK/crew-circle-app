@@ -1,1 +1,1 @@
-export * from "./upsert-user";
+export * from "./upsertUser";

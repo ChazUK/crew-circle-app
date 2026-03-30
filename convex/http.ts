@@ -1,8 +1,7 @@
+import { internal } from "@convex/api";
+import { httpAction } from "@convex/server";
 import { httpRouter } from "convex/server";
 import { Webhook } from "svix";
-
-import { internal } from "./_generated/api";
-import { httpAction } from "./_generated/server";
 
 // Minimal types for the Clerk webhook payloads we handle.
 // Using explicit interfaces rather than @clerk/types keeps this dependency-free.
