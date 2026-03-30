@@ -43,3 +43,6 @@ yarn-error.*
 
 # testing
 /coverage
+
+# ralph agent
+progress.txt
