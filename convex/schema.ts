@@ -38,5 +38,5 @@ export const KitTag = {
 
 export default defineSchema({
   users: defineTable(User).index("byExternalAuthId", ["externalAuthId"]),
-  kitTags: defineTable(KitTag).index("by_name", ["name"]),
+  kitTags: defineTable(KitTag).index("byName", ["name"]),
 });
