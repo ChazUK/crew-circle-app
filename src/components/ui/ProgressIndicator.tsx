@@ -7,18 +7,21 @@ type Props = {
 };
 
 export function ProgressIndicator({ currentStep, totalSteps }: Props) {
+  const safeTotalSteps = Math.min(5, Math.max(1, Math.trunc(totalSteps)));
+  const safeCurrentStep = Math.min(safeTotalSteps, Math.max(1, Math.trunc(currentStep)));
+
   return (
     <View
       accessible
       accessibilityRole="progressbar"
-      accessibilityLabel={`Step ${currentStep} of ${totalSteps}`}
-      accessibilityValue={{ min: 1, max: totalSteps, now: currentStep }}
+      accessibilityLabel={`Step ${safeCurrentStep} of ${safeTotalSteps}`}
+      accessibilityValue={{ min: 1, max: safeTotalSteps, now: safeCurrentStep }}
       style={styles.container}
     >
-      {Array.from({ length: totalSteps }, (_, i) => {
+      {Array.from({ length: safeTotalSteps }, (_, i) => {
         const step = i + 1;
-        const isCompleted = step < currentStep;
-        const isActive = step === currentStep;
+        const isCompleted = step < safeCurrentStep;
+        const isActive = step === safeCurrentStep;
 
         return (
           <View
