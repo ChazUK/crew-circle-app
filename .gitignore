@@ -46,3 +46,7 @@ yarn-error.*
 
 # ralph agent
 progress.txt
+
+# storybook
+*storybook.log
+storybook-static
