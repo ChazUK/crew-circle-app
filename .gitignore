@@ -43,3 +43,7 @@ yarn-error.*
 
 # testing
 /coverage
+progress.txt
+
+*storybook.log
+storybook-static
