@@ -32,6 +32,11 @@ export const User = {
   isPublic: v.optional(v.boolean()),
 };
 
+export const KitTag = {
+  name: v.string(),
+};
+
 export default defineSchema({
   users: defineTable(User).index("byExternalAuthId", ["externalAuthId"]),
+  kitTags: defineTable(KitTag).index("byName", ["name"]),
 });
