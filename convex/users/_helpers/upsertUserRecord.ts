@@ -1,6 +1,6 @@
 import { MutationCtx } from "@convex/_generated/server";
 
-import { userByExternalId } from "./user_by_external_id";
+import { userByExternalId } from "./userByExternalId";
 
 export async function upsertUserRecord(
   ctx: MutationCtx,
@@ -13,6 +13,7 @@ export async function upsertUserRecord(
   },
 ) {
   const existing = await userByExternalId(ctx, args.externalAuthId);
+
   if (existing) return existing._id;
 
   return ctx.db.insert("users", {

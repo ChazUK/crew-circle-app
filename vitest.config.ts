@@ -11,6 +11,7 @@ export default defineConfig({
       include: ["convex/**/*.ts"],
       exclude: [
         "convex/_generated/**",
+        "convex/_helpers/**",
         "convex/auth.config.ts",
         "convex/schema.ts",
         "convex/_testModules.ts",
