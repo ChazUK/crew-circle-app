@@ -46,6 +46,7 @@ describe("upsertUser", () => {
     );
     const user = await t.run((ctx) => ctx.db.get(id));
     expect(user?.firstName).toBe("Full");
+    expect(user?.lastName).toBe("User");
     expect(user?.profilePictureUrl).toBe("https://example.com/pic.jpg");
   });
 });

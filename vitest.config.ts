@@ -20,7 +20,6 @@ export default defineConfig({
       exclude: [
         "convex/_generated/**",
         "convex/auth.config.ts",
-        "convex/schema.ts",
         "convex/**/schema.ts",
         "convex/**/mutations.ts",
         "convex/**/webhooks.ts",

@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 
+import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
 import { getUserByExternalId, getUserById } from "./getUser";
 
@@ -32,7 +33,7 @@ describe("getUserById", () => {
   test("returns null for an unknown id", async () => {
     const t = convexTest(schema, modules);
     const result = await t.run((ctx) =>
-      getUserById(ctx, "jn7b4r8ape7qfmtkxbwj8d5j8h6x4yhg" as never),
+      getUserById(ctx, "jn7b4r8ape7qfmtkxbwj8d5j8h6x4yhg" as Id<"users">),
     );
     expect(result).toBeNull();
   });

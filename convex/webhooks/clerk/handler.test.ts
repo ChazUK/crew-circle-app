@@ -71,18 +71,57 @@ describe("handleClerkWebhook", () => {
       expect(response.status).toBe(500);
     });
 
-    test("returns 400 when svix-id header is missing", async () => {
+    test("returns 400 when svix-id header is empty", async () => {
       const response = await handler(ctx, makeRequest("{}", { "svix-id": "" }));
       expect(response.status).toBe(400);
     });
 
-    test("returns 400 when svix-timestamp header is missing", async () => {
+    test("returns 400 when svix-timestamp header is empty", async () => {
       const response = await handler(ctx, makeRequest("{}", { "svix-timestamp": "" }));
       expect(response.status).toBe(400);
     });
 
-    test("returns 400 when svix-signature header is missing", async () => {
+    test("returns 400 when svix-signature header is empty", async () => {
       const response = await handler(ctx, makeRequest("{}", { "svix-signature": "" }));
+      expect(response.status).toBe(400);
+    });
+
+    test("returns 400 when svix-id header is absent", async () => {
+      const { "svix-id": _omit, ...rest } = SVIX_HEADERS;
+      const response = await handler(
+        ctx,
+        new Request("https://example.com/webhooks/clerk", {
+          method: "POST",
+          body: "{}",
+          headers: rest,
+        }),
+      );
+      expect(response.status).toBe(400);
+    });
+
+    test("returns 400 when svix-timestamp header is absent", async () => {
+      const { "svix-timestamp": _omit, ...rest } = SVIX_HEADERS;
+      const response = await handler(
+        ctx,
+        new Request("https://example.com/webhooks/clerk", {
+          method: "POST",
+          body: "{}",
+          headers: rest,
+        }),
+      );
+      expect(response.status).toBe(400);
+    });
+
+    test("returns 400 when svix-signature header is absent", async () => {
+      const { "svix-signature": _omit, ...rest } = SVIX_HEADERS;
+      const response = await handler(
+        ctx,
+        new Request("https://example.com/webhooks/clerk", {
+          method: "POST",
+          body: "{}",
+          headers: rest,
+        }),
+      );
       expect(response.status).toBe(400);
     });
 

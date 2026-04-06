@@ -33,5 +33,7 @@ export const User = {
 };
 
 export const usersSchema = {
-  users: defineTable(User).index("byExternalAuthId", ["externalAuthId"]),
+  users: defineTable(User)
+    .index("byExternalAuthId", ["externalAuthId"])
+    .index("byEmail", ["email"]),
 };

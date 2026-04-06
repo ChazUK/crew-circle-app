@@ -45,18 +45,24 @@ export type ParsedClerkEvent =
     }
   | { type: "userDeleted"; args: { externalAuthId: string } };
 
+function resolvePrimaryEmail(
+  email_addresses: ClerkEmailAddress[],
+  primary_email_address_id: string,
+): string | undefined {
+  return email_addresses.find((e) => e.id === primary_email_address_id)?.email_address;
+}
+
 export function parseClerkEvent(event: ClerkWebhookEvent): ParsedClerkEvent {
   switch (event.type) {
     case "user.created": {
       const { id, email_addresses, primary_email_address_id, first_name, last_name, image_url } =
         event.data;
-      const primaryEmail = email_addresses.find((e) => e.id === primary_email_address_id);
 
       return {
         type: "userCreated",
         args: {
           externalAuthId: id,
-          email: primaryEmail?.email_address ?? "",
+          email: resolvePrimaryEmail(email_addresses, primary_email_address_id) ?? "",
           firstName: first_name ?? undefined,
           lastName: last_name ?? undefined,
           profilePictureUrl: image_url ?? undefined,
@@ -66,13 +72,12 @@ export function parseClerkEvent(event: ClerkWebhookEvent): ParsedClerkEvent {
     case "user.updated": {
       const { id, email_addresses, primary_email_address_id, first_name, last_name, image_url } =
         event.data;
-      const primaryEmail = email_addresses.find((e) => e.id === primary_email_address_id);
 
       return {
         type: "userUpdated",
         args: {
           externalAuthId: id,
-          email: primaryEmail?.email_address,
+          email: resolvePrimaryEmail(email_addresses, primary_email_address_id),
           firstName: first_name ?? undefined,
           lastName: last_name ?? undefined,
           profilePictureUrl: image_url ?? undefined,

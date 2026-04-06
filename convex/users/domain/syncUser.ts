@@ -1,4 +1,4 @@
-import { MutationCtx } from "@convex/_generated/server";
+import { MutationCtx } from "@convex/server";
 
 import { getUserByExternalId } from "../db/getUser";
 import { upsertUser } from "../db/upsertUser";
@@ -28,12 +28,16 @@ export const updateUser = async (
   },
 ) => {
   const user = await getUserByExternalId(ctx, externalAuthId);
+
   if (!user) return null;
 
   const updates = Object.fromEntries(
     Object.entries(fields).filter(([, value]) => value !== undefined),
   );
+
   await ctx.db.patch(user._id, updates);
+
+  return user._id;
 };
 
 export const deleteUser = async (
@@ -41,6 +45,10 @@ export const deleteUser = async (
   { externalAuthId }: { externalAuthId: string },
 ) => {
   const user = await getUserByExternalId(ctx, externalAuthId);
+
   if (!user) return null;
+
   await ctx.db.delete(user._id);
+
+  return true;
 };
