@@ -15,7 +15,7 @@ export default function Home() {
       <Pressable onPress={() => signOut()}>
         <Text>Sign out</Text>
       </Pressable>
-      <Link href="/storybook">Open Storybook</Link>
+      {__DEV__ && <Link href="/storybook">Open Storybook</Link>}
     </View>
   );
 }
