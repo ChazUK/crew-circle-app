@@ -1,5 +1,5 @@
 {
   "permissions": {
-    "allow": ["Bash(ls:*)", "Bash(gh issue:*)"]
+    "allow": ["Bash(ls:*)", "Bash(gh issue:*)", "Bash(npx vitest:*)"]
   }
 }

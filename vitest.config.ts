@@ -2,8 +2,16 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    environment: "edge-runtime",
-    include: ["convex/**/*.test.ts"],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "convex",
+          include: ["convex/**/*.test.ts"],
+          environment: "edge-runtime",
+        },
+      },
+    ],
     coverage: {
       provider: "v8",
       reportsDirectory: "coverage",
@@ -11,10 +19,13 @@ export default defineConfig({
       include: ["convex/**/*.ts"],
       exclude: [
         "convex/_generated/**",
-        "convex/_helpers/**",
         "convex/auth.config.ts",
         "convex/schema.ts",
-        "convex/_testModules.ts",
+        "convex/users/schema.ts",
+        "convex/http.ts",
+        "convex/**/mutations.ts",
+        "convex/**/webhooks.ts",
+        "convex/**/clerkWebhook.ts",
         "**/*.d.ts",
         "**/*.test.ts",
       ],
