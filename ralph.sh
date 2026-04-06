@@ -429,7 +429,9 @@ agent_loop() {
     agent_log "$agent_id" "claimed #$issue_number: $issue_title"
 
     # ── Set up isolated git worktree ───────────────────────────
-    local branch="ralph/issue-${issue_number}"
+    local title_slug
+    title_slug=$(echo "$issue_title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-\|-$//g' | cut -c1-50)
+    local branch="ralph/${issue_number}-${title_slug}"
     local worktree="${WORKTREES_DIR}/agent-${agent_id}"
 
     # Remove stale worktree if present
