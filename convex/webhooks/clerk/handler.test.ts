@@ -86,6 +86,21 @@ describe("handleClerkWebhook", () => {
         profilePictureUrl: "https://example.com/pic.jpg",
       });
     });
+
+    test("skips mutation and returns 200 when primary email is missing", async () => {
+      const noEmailPayload = {
+        ...userPayload,
+        email_addresses: [],
+        primary_email_address_id: null,
+      };
+      mockVerifyWebhook.mockResolvedValue({ type: "user.created", data: noEmailPayload });
+      const response = await handler(
+        ctx,
+        makeRequest(JSON.stringify({ type: "user.created", data: noEmailPayload })),
+      );
+      expect(response.status).toBe(200);
+      expect(ctx.runMutation).not.toHaveBeenCalled();
+    });
   });
 
   describe("user.updated", () => {

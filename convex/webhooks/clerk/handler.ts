@@ -14,9 +14,17 @@ export const handleClerkWebhook = httpAction(async (ctx, request) => {
         const { id, email_addresses, primary_email_address_id, first_name, last_name, image_url } =
           event.data;
 
+        const email = resolvePrimaryEmail(email_addresses, primary_email_address_id);
+        if (!email) {
+          console.warn(
+            `user.created webhook received for user ${id} with no primary email — skipping`,
+          );
+          break;
+        }
+
         await ctx.runMutation(internal.users.webhooks.userCreated, {
           externalAuthId: id,
-          email: resolvePrimaryEmail(email_addresses, primary_email_address_id) ?? "",
+          email,
           firstName: first_name ?? undefined,
           lastName: last_name ?? undefined,
           profilePictureUrl: image_url ?? undefined,
