@@ -1,11 +1,11 @@
 import { httpRouter } from "convex/server";
 
-import { handleClerkWebhook } from "./users/clerkWebhook";
+import { handleClerkWebhook } from "./webhooks/clerk/handler";
 
 const http = httpRouter();
 
 http.route({
-  path: "/clerk-users-webhook",
+  path: "/webhooks/clerk",
   method: "POST",
   handler: handleClerkWebhook,
 });

@@ -9,15 +9,14 @@
  */
 
 import type * as http from "../http.js";
-import type * as users_clerkWebhook from "../users/clerkWebhook.js";
 import type * as users_db_getUser from "../users/db/getUser.js";
 import type * as users_db_upsertUser from "../users/db/upsertUser.js";
-import type * as users_domain_parseClerkWebhook from "../users/domain/parseClerkWebhook.js";
 import type * as users_domain_syncUser from "../users/domain/syncUser.js";
 import type * as users_domain_upsertCurrentUser from "../users/domain/upsertCurrentUser.js";
 import type * as users_mutations from "../users/mutations.js";
 import type * as users_webhooks from "../users/webhooks.js";
 import type * as webhooks_clerk_handler from "../webhooks/clerk/handler.js";
+import type * as webhooks_clerk_parse from "../webhooks/clerk/parse.js";
 
 import type {
   ApiFromModules,
@@ -27,15 +26,14 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   http: typeof http;
-  "users/clerkWebhook": typeof users_clerkWebhook;
   "users/db/getUser": typeof users_db_getUser;
   "users/db/upsertUser": typeof users_db_upsertUser;
-  "users/domain/parseClerkWebhook": typeof users_domain_parseClerkWebhook;
   "users/domain/syncUser": typeof users_domain_syncUser;
   "users/domain/upsertCurrentUser": typeof users_domain_upsertCurrentUser;
   "users/mutations": typeof users_mutations;
   "users/webhooks": typeof users_webhooks;
   "webhooks/clerk/handler": typeof webhooks_clerk_handler;
+  "webhooks/clerk/parse": typeof webhooks_clerk_parse;
 }>;
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import { parseClerkEvent } from "./parseClerkWebhook";
-import type { ClerkWebhookEvent } from "./parseClerkWebhook";
+import { parseClerkEvent } from "./parse";
+import type { ClerkWebhookEvent } from "./parse";
 
 const emailList = [
   { id: "email_1", email_address: "primary@example.com" },
