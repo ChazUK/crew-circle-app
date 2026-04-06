@@ -30,7 +30,7 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { isLoading, isAuthenticated } = useConvexAuth();
-  const upsertUser = useMutation(api.users.mutations.upsertUser);
+  const upsertUser = useMutation(api.users.mutations.upsertUser.mutate);
 
   // True once the user record has been created/confirmed in the database.
   // Prevents routing to protected screens before the user doc exists.

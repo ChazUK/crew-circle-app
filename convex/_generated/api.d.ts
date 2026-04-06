@@ -9,18 +9,14 @@
  */
 
 import type * as http from "../http.js";
-import type * as users__helpers_get_current_user from "../users/_helpers/get_current_user.js";
-import type * as users__helpers_index from "../users/_helpers/index.js";
-import type * as users__helpers_upsert_user_record from "../users/_helpers/upsert_user_record.js";
-import type * as users__helpers_user_by_external_id from "../users/_helpers/user_by_external_id.js";
-import type * as users__mutations_index from "../users/_mutations/index.js";
-import type * as users__mutations_upsertUser from "../users/_mutations/upsertUser.js";
-import type * as users_clerk_index from "../users/clerk/index.js";
-import type * as users_clerk_userCreated from "../users/clerk/userCreated.js";
-import type * as users_clerk_userDeleted from "../users/clerk/userDeleted.js";
-import type * as users_clerk_userUpdated from "../users/clerk/userUpdated.js";
+import type * as users_db_getUser from "../users/db/getUser.js";
+import type * as users_db_upsertUser from "../users/db/upsertUser.js";
+import type * as users_domain_syncUser from "../users/domain/syncUser.js";
+import type * as users_domain_upsertCurrentUser from "../users/domain/upsertCurrentUser.js";
 import type * as users_mutations from "../users/mutations.js";
 import type * as users_webhooks from "../users/webhooks.js";
+import type * as webhooks_clerk_handler from "../webhooks/clerk/handler.js";
+import type * as webhooks_clerk_parse from "../webhooks/clerk/parse.js";
 
 import type {
   ApiFromModules,
@@ -30,18 +26,14 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   http: typeof http;
-  "users/_helpers/get_current_user": typeof users__helpers_get_current_user;
-  "users/_helpers/index": typeof users__helpers_index;
-  "users/_helpers/upsert_user_record": typeof users__helpers_upsert_user_record;
-  "users/_helpers/user_by_external_id": typeof users__helpers_user_by_external_id;
-  "users/_mutations/index": typeof users__mutations_index;
-  "users/_mutations/upsertUser": typeof users__mutations_upsertUser;
-  "users/clerk/index": typeof users_clerk_index;
-  "users/clerk/userCreated": typeof users_clerk_userCreated;
-  "users/clerk/userDeleted": typeof users_clerk_userDeleted;
-  "users/clerk/userUpdated": typeof users_clerk_userUpdated;
+  "users/db/getUser": typeof users_db_getUser;
+  "users/db/upsertUser": typeof users_db_upsertUser;
+  "users/domain/syncUser": typeof users_domain_syncUser;
+  "users/domain/upsertCurrentUser": typeof users_domain_upsertCurrentUser;
   "users/mutations": typeof users_mutations;
   "users/webhooks": typeof users_webhooks;
+  "webhooks/clerk/handler": typeof webhooks_clerk_handler;
+  "webhooks/clerk/parse": typeof webhooks_clerk_parse;
 }>;
 
 /**
