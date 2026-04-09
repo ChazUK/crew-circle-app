@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
+      "@/data/*": ["./src/data/*"],
       "@/*": ["./src/*"],
       "@convex/api": ["./convex/_generated/api"],
       "@convex/server": ["./convex/_generated/server"],
