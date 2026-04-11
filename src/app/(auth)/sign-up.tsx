@@ -19,6 +19,10 @@ export default function Page() {
   const [resendCountdown, setResendCountdown] = useState(0);
 
   useEffect(() => {
+    signUp.reset();
+  }, []);
+
+  useEffect(() => {
     if (resendCountdown === 0) return;
 
     const timer = setTimeout(() => setResendCountdown((c) => c - 1), 1000);
