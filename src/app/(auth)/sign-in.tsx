@@ -7,6 +7,7 @@ import {
   Card,
   FieldError,
   Input,
+  InputOTP,
   Label,
   LinkButton,
   Surface,
@@ -112,52 +113,75 @@ export default function Page() {
     return (
       <Surface className="flex-1 p-5">
         <SafeAreaView className="flex-1">
-          <Card className="gap-4">
-            <Card.Body className="gap-4">
-              <Card.Title className="text-2xl">Verify your account</Card.Title>
-              <verifyForm.Field name="code">
-                {(field) => (
-                  <TextField isInvalid={!!clerkErrors.fields.code}>
-                    <Label>Verification code</Label>
-                    <Input
-                      value={field.state.value}
-                      placeholder="Enter your verification code"
-                      onChangeText={field.handleChange}
-                      onBlur={field.handleBlur}
-                      keyboardType="numeric"
-                    />
-                    {clerkErrors.fields.code && (
-                      <FieldError>{clerkErrors.fields.code.message}</FieldError>
-                    )}
-                  </TextField>
-                )}
-              </verifyForm.Field>
-            </Card.Body>
-            <Card.Footer className="gap-3 flex-col">
-              <verifyForm.Subscribe selector={(state) => state.isSubmitting}>
-                {(isSubmitting) => (
-                  <Button
-                    variant="primary"
-                    onPress={() => verifyForm.handleSubmit()}
-                    isDisabled={isSubmitting || fetchStatus === "fetching"}
-                    className="w-full"
-                  >
-                    Verify
-                  </Button>
-                )}
-              </verifyForm.Subscribe>
-              <Button
-                variant="secondary"
-                onPress={() => signIn.mfa.sendEmailCode()}
-                className="w-full"
-              >
-                I need a new code
+          <View className="flex-1 gap-6">
+            <View className="self-start">
+              <Button variant="ghost" onPress={() => signIn.reset()} className="-ml-2">
+                ← Back
               </Button>
-              <Button variant="tertiary" onPress={() => signIn.reset()} className="w-full">
-                Start over
-              </Button>
-            </Card.Footer>
-          </Card>
+            </View>
+            <View className="items-center gap-4 mx-4 my-8">
+              <Text className="text-3xl font-bold">Verify your account</Text>
+              <Text className="text-muted">Enter the verification code sent to your email</Text>
+            </View>
+
+            <Card className="gap-4 mx-4">
+              <Card.Body className="gap-4 items-center">
+                <verifyForm.Field name="code">
+                  {(field) => (
+                    <View className="gap-2 items-center">
+                      <InputOTP
+                        maxLength={6}
+                        value={field.state.value}
+                        onChange={field.handleChange}
+                        onBlur={field.handleBlur}
+                        isInvalid={!!clerkErrors.fields.code}
+                        onComplete={() => verifyForm.handleSubmit()}
+                      >
+                        <InputOTP.Group>
+                          <InputOTP.Slot index={0} />
+                          <InputOTP.Slot index={1} />
+                          <InputOTP.Slot index={2} />
+                        </InputOTP.Group>
+                        <InputOTP.Separator />
+                        <InputOTP.Group>
+                          <InputOTP.Slot index={3} />
+                          <InputOTP.Slot index={4} />
+                          <InputOTP.Slot index={5} />
+                        </InputOTP.Group>
+                      </InputOTP>
+                      {clerkErrors.fields.code && (
+                        <FieldError>{clerkErrors.fields.code.message}</FieldError>
+                      )}
+                    </View>
+                  )}
+                </verifyForm.Field>
+              </Card.Body>
+              <Card.Footer className="gap-3 flex-col">
+                <verifyForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+                  {([canSubmit, isSubmitting]) => (
+                    <Button
+                      variant="primary"
+                      onPress={() => verifyForm.handleSubmit()}
+                      isDisabled={!canSubmit || isSubmitting || fetchStatus === "fetching"}
+                      className="w-full"
+                    >
+                      {isSubmitting ? "Verifying..." : "Verify"}
+                    </Button>
+                  )}
+                </verifyForm.Subscribe>
+                <Button
+                  variant="secondary"
+                  onPress={() => signIn.mfa.sendEmailCode()}
+                  className="w-full"
+                >
+                  I need a new code
+                </Button>
+                <Button variant="tertiary" onPress={() => signIn.reset()} className="w-full">
+                  Start over
+                </Button>
+              </Card.Footer>
+            </Card>
+          </View>
         </SafeAreaView>
       </Surface>
     );
