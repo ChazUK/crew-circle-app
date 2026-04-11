@@ -1,244 +1,272 @@
 import { useSignIn } from "@clerk/expo";
+import { useForm } from "@tanstack/react-form";
+import { Image } from "expo-image";
 import { type Href, Link, useRouter } from "expo-router";
-import { Button } from "heroui-native";
-import React from "react";
-import { Pressable, StyleSheet, TextInput, View, Text } from "react-native";
+import {
+  Button,
+  Card,
+  FieldError,
+  Input,
+  Label,
+  LinkButton,
+  Surface,
+  TextField,
+} from "heroui-native";
+import { Text, View } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Page() {
-  const { signIn, errors, fetchStatus } = useSignIn();
+  const { signIn, errors: clerkErrors, fetchStatus } = useSignIn();
   const router = useRouter();
 
-  const [emailAddress, setEmailAddress] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [code, setCode] = React.useState("");
-
-  const handleSubmit = async () => {
-    const { error } = await signIn.password({
-      emailAddress,
-      password,
-    });
-    if (error) {
-      console.error(JSON.stringify(error, null, 2));
-      return;
-    }
-
-    if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            // Handle pending session tasks
-            // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
-            console.log(session?.currentTask);
-            return;
-          }
-
-          const url = decorateUrl("/");
-          if (url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.push(url as Href);
-          }
-        },
+  const signInForm = useForm({
+    defaultValues: {
+      emailAddress: "",
+      password: "",
+    },
+    onSubmit: async ({ value }) => {
+      const { error } = await signIn.password({
+        emailAddress: value.emailAddress,
+        password: value.password,
       });
-    } else if (signIn.status === "needs_second_factor") {
-      // See https://clerk.com/docs/guides/development/custom-flows/authentication/multi-factor-authentication
-    } else if (signIn.status === "needs_client_trust") {
-      // For other second factor strategies,
-      // see https://clerk.com/docs/guides/development/custom-flows/authentication/client-trust
-      const emailCodeFactor = signIn.supportedSecondFactors.find(
-        (factor) => factor.strategy === "email_code",
-      );
 
-      if (emailCodeFactor) {
-        await signIn.mfa.sendEmailCode();
+      if (error) {
+        console.error(JSON.stringify(error, null, 2));
+
+        return;
       }
-    } else {
-      // Check why the sign-in is not complete
-      console.error("Sign-in attempt not complete:", signIn);
-    }
-  };
 
-  const handleVerify = async () => {
-    await signIn.mfa.verifyEmailCode({ code });
+      if (signIn.status === "complete") {
+        await signIn.finalize({
+          navigate: ({ session, decorateUrl }) => {
+            if (session?.currentTask) {
+              // Handle pending session tasks
+              // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+              console.log(session?.currentTask);
 
-    if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            // Handle pending session tasks
-            // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
-            console.log(session?.currentTask);
-            return;
-          }
+              return;
+            }
 
-          const url = decorateUrl("/");
-          if (url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.push(url as Href);
-          }
-        },
-      });
-    } else {
-      // Check why the sign-in is not complete
-      console.error("Sign-in attempt not complete:", signIn);
-    }
-  };
+            const url = decorateUrl("/");
+
+            if (url.startsWith("http")) {
+              window.location.href = url;
+            } else {
+              router.push(url as Href);
+            }
+          },
+        });
+      } else if (signIn.status === "needs_second_factor") {
+        // See https://clerk.com/docs/guides/development/custom-flows/authentication/multi-factor-authentication
+      } else if (signIn.status === "needs_client_trust") {
+        // For other second factor strategies,
+        // see https://clerk.com/docs/guides/development/custom-flows/authentication/client-trust
+        const emailCodeFactor = signIn.supportedSecondFactors.find(
+          (factor) => factor.strategy === "email_code",
+        );
+
+        if (emailCodeFactor) {
+          await signIn.mfa.sendEmailCode();
+        }
+      } else {
+        console.error("Sign-in attempt not complete:", signIn);
+      }
+    },
+  });
+
+  const verifyForm = useForm({
+    defaultValues: {
+      code: "",
+    },
+    onSubmit: async ({ value }) => {
+      await signIn.mfa.verifyEmailCode({ code: value.code });
+
+      if (signIn.status === "complete") {
+        await signIn.finalize({
+          navigate: ({ session, decorateUrl }) => {
+            if (session?.currentTask) {
+              // Handle pending session tasks
+              // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+              console.log(session?.currentTask);
+
+              return;
+            }
+
+            const url = decorateUrl("/");
+
+            if (url.startsWith("http")) {
+              window.location.href = url;
+            } else {
+              router.push(url as Href);
+            }
+          },
+        });
+      } else {
+        console.error("Sign-in attempt not complete:", signIn);
+      }
+    },
+  });
 
   if (signIn.status === "needs_client_trust") {
     return (
-      <View style={styles.container}>
-        <Text style={[styles.title, { fontSize: 24, fontWeight: "bold" }]}>
-          Verify your account
-        </Text>
-        <TextInput
-          style={styles.input}
-          value={code}
-          placeholder="Enter your verification code"
-          placeholderTextColor="#666666"
-          onChangeText={(code) => setCode(code)}
-          keyboardType="numeric"
-        />
-        {errors.fields.code && <Text style={styles.error}>{errors.fields.code.message}</Text>}
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            fetchStatus === "fetching" && styles.buttonDisabled,
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={handleVerify}
-          disabled={fetchStatus === "fetching"}
-        >
-          <Text style={styles.buttonText}>Verify</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-          onPress={() => signIn.mfa.sendEmailCode()}
-        >
-          <Text style={styles.secondaryButtonText}>I need a new code</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-          onPress={() => signIn.reset()}
-        >
-          <Text style={styles.secondaryButtonText}>Start over</Text>
-        </Pressable>
-      </View>
+      <Surface className="flex-1 p-5">
+        <SafeAreaView className="flex-1">
+          <Card className="gap-4">
+            <Card.Body className="gap-4">
+              <Card.Title className="text-2xl">Verify your account</Card.Title>
+              <verifyForm.Field name="code">
+                {(field) => (
+                  <TextField isInvalid={!!clerkErrors.fields.code}>
+                    <Label>Verification code</Label>
+                    <Input
+                      value={field.state.value}
+                      placeholder="Enter your verification code"
+                      onChangeText={field.handleChange}
+                      onBlur={field.handleBlur}
+                      keyboardType="numeric"
+                    />
+                    {clerkErrors.fields.code && (
+                      <FieldError>{clerkErrors.fields.code.message}</FieldError>
+                    )}
+                  </TextField>
+                )}
+              </verifyForm.Field>
+            </Card.Body>
+            <Card.Footer className="gap-3 flex-col">
+              <verifyForm.Subscribe selector={(state) => state.isSubmitting}>
+                {(isSubmitting) => (
+                  <Button
+                    variant="primary"
+                    onPress={() => verifyForm.handleSubmit()}
+                    isDisabled={isSubmitting || fetchStatus === "fetching"}
+                    className="w-full"
+                  >
+                    Verify
+                  </Button>
+                )}
+              </verifyForm.Subscribe>
+              <Button
+                variant="secondary"
+                onPress={() => signIn.mfa.sendEmailCode()}
+                className="w-full"
+              >
+                I need a new code
+              </Button>
+              <Button variant="tertiary" onPress={() => signIn.reset()} className="w-full">
+                Start over
+              </Button>
+            </Card.Footer>
+          </Card>
+        </SafeAreaView>
+      </Surface>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text className="text-lg font-bold text-gray-900 dark:text-white">Sign in</Text>
+    <View style={{ flex: 1 }}>
+      <SafeAreaView className="flex-1">
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          <View className="flex-1 gap-6">
+            <View className="items-center gap-4 mx-4 my-8">
+              <Image
+                source={require("@/assets/icons/splash-icon-dark.png")}
+                style={{ width: 96, height: 96 }}
+              />
+              <Text className="text-3xl font-bold">Sign in to your account</Text>
+              <Text className="text-muted">Enter your email and password to log in</Text>
+            </View>
 
-      <Text style={styles.label}>Email address</Text>
-      <TextInput
-        style={styles.input}
-        autoCapitalize="none"
-        value={emailAddress}
-        placeholder="Enter email"
-        placeholderTextColor="#666666"
-        onChangeText={(emailAddress) => setEmailAddress(emailAddress)}
-        keyboardType="email-address"
-      />
-      {errors.fields.identifier && (
-        <Text style={styles.error}>{errors.fields.identifier.message}</Text>
-      )}
-      <Text style={styles.label}>Password</Text>
-      <TextInput
-        style={styles.input}
-        value={password}
-        placeholder="Enter password"
-        placeholderTextColor="#666666"
-        secureTextEntry={true}
-        onChangeText={(password) => setPassword(password)}
-      />
-      {errors.fields.password && <Text style={styles.error}>{errors.fields.password.message}</Text>}
-      <Button
-        variant="primary"
-        onPress={handleSubmit}
-        isDisabled={!emailAddress || !password || fetchStatus === "fetching"}
-      >
-        Sign In
-      </Button>
-      {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
-      {errors && <Text style={styles.debug}>{JSON.stringify(errors, null, 2)}</Text>}
+            <Card className="gap-4 mx-4">
+              <Card.Body className="gap-4">
+                <signInForm.Field name="emailAddress">
+                  {(field) => (
+                    <TextField isInvalid={!!clerkErrors.fields.identifier}>
+                      <Label>Email</Label>
+                      <Input
+                        autoCapitalize="none"
+                        autoComplete="email"
+                        autoCorrect={false}
+                        value={field.state.value}
+                        onChangeText={field.handleChange}
+                        onBlur={field.handleBlur}
+                        keyboardType="email-address"
+                        returnKeyType="next"
+                        submitBehavior="submit"
+                      />
+                      {clerkErrors.fields.identifier && (
+                        <FieldError>{clerkErrors.fields.identifier.message}</FieldError>
+                      )}
+                    </TextField>
+                  )}
+                </signInForm.Field>
 
-      <View style={styles.linkContainer}>
-        <Text>Don't have an account? </Text>
-        <Link href="/sign-up">
-          <Text>Sign up</Text>
-        </Link>
-      </View>
-      {__DEV__ && <Link href="/storybook">Open Storybook</Link>}
+                <signInForm.Field name="password">
+                  {(field) => (
+                    <TextField isInvalid={!!clerkErrors.fields.password}>
+                      <View className="flex-row justify-between items-center">
+                        <Label>Password</Label>
+                        <Link href="/forgot-password" asChild>
+                          <LinkButton size="sm">
+                            <LinkButton.Label className="text-accent">
+                              Forgot password?
+                            </LinkButton.Label>
+                          </LinkButton>
+                        </Link>
+                      </View>
+                      <Input
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="password"
+                        value={field.state.value}
+                        secureTextEntry
+                        onChangeText={field.handleChange}
+                        onBlur={field.handleBlur}
+                        returnKeyType="send"
+                      />
+                      {clerkErrors.fields.password && (
+                        <FieldError>{clerkErrors.fields.password.message}</FieldError>
+                      )}
+                    </TextField>
+                  )}
+                </signInForm.Field>
+              </Card.Body>
+
+              <Card.Footer className="flex-col gap-4">
+                <signInForm.Subscribe selector={(state) => [state.isSubmitting, state.values]}>
+                  {([isSubmitting, values]) => {
+                    const { emailAddress, password } = values as {
+                      emailAddress: string;
+                      password: string;
+                    };
+                    return (
+                      <Button
+                        variant="primary"
+                        onPress={() => signInForm.handleSubmit()}
+                        isDisabled={
+                          !emailAddress || !password || !!isSubmitting || fetchStatus === "fetching"
+                        }
+                        className="w-full"
+                      >
+                        Sign In
+                      </Button>
+                    );
+                  }}
+                </signInForm.Subscribe>
+              </Card.Footer>
+            </Card>
+
+            <View className="flex-row gap-1 justify-center ">
+              <Text className="text-sm text-muted">Don't have an account?</Text>
+              <Link href="/sign-up" asChild>
+                <LinkButton size="sm">
+                  <LinkButton.Label className="text-accent">Sign up</LinkButton.Label>
+                </LinkButton>
+              </Link>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    gap: 12,
-  },
-  title: {
-    marginBottom: 8,
-  },
-  label: {
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: "#fff",
-  },
-  button: {
-    backgroundColor: "#0a7ea4",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  secondaryButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  secondaryButtonText: {
-    color: "#0a7ea4",
-    fontWeight: "600",
-  },
-  linkContainer: {
-    flexDirection: "row",
-    gap: 4,
-    marginTop: 12,
-    alignItems: "center",
-  },
-  error: {
-    color: "#d32f2f",
-    fontSize: 12,
-    marginTop: -8,
-  },
-  debug: {
-    fontSize: 10,
-    opacity: 0.5,
-    marginTop: 8,
-  },
-});
