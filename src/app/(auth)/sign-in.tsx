@@ -2,37 +2,29 @@ import { useSignIn } from "@clerk/expo";
 import { useForm } from "@tanstack/react-form";
 import { Image } from "expo-image";
 import { type Href, Link, useRouter } from "expo-router";
-import {
-  Button,
-  Card,
-  FieldError,
-  Input,
-  InputOTP,
-  Label,
-  LinkButton,
-  TextField,
-} from "heroui-native";
+import { Button, Card, FieldError, Input, Label, LinkButton, TextField } from "heroui-native";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { VerifyCodeScreen } from "@/components/ui/VerifyCodeScreen";
 
 export default function Page() {
   const { signIn, errors: clerkErrors, fetchStatus } = useSignIn();
   const router = useRouter();
 
   const [resendCountdown, setResendCountdown] = useState(30);
+  const [secondFactorStrategy, setSecondFactorStrategy] = useState<
+    "totp" | "email_code" | "phone_code" | null
+  >(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
     if (resendCountdown === 0) return;
     const timer = setTimeout(() => setResendCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [resendCountdown]);
-
-  const handleResendCode = async () => {
-    await signIn.mfa.sendEmailCode();
-    setResendCountdown(30);
-  };
 
   const signInForm = useForm({
     defaultValues: {
@@ -47,32 +39,34 @@ export default function Page() {
 
       if (error) {
         console.error(JSON.stringify(error, null, 2));
-
         return;
       }
 
       if (signIn.status === "complete") {
-        await signIn.finalize({
-          navigate: ({ session, decorateUrl }) => {
-            if (session?.currentTask) {
-              // Handle pending session tasks
-              // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
-              console.log(session?.currentTask);
-
-              return;
-            }
-
-            const url = decorateUrl("/");
-
-            if (url.startsWith("http")) {
-              window.location.href = url;
-            } else {
-              router.push(url as Href);
-            }
-          },
-        });
+        await finalizeSignIn();
       } else if (signIn.status === "needs_second_factor") {
         // See https://clerk.com/docs/guides/development/custom-flows/authentication/multi-factor-authentication
+        const totpFactor = signIn.supportedSecondFactors?.find(
+          (factor) => factor.strategy === "totp",
+        );
+        const phoneCodeFactor = signIn.supportedSecondFactors?.find(
+          (factor) => factor.strategy === "phone_code",
+        );
+        const emailCodeFactor = signIn.supportedSecondFactors?.find(
+          (factor) => factor.strategy === "email_code",
+        );
+
+        if (totpFactor) {
+          setSecondFactorStrategy("totp");
+        } else if (phoneCodeFactor) {
+          await signIn.mfa.sendPhoneCode();
+          setSecondFactorStrategy("phone_code");
+          setResendCountdown(30);
+        } else if (emailCodeFactor) {
+          await signIn.mfa.sendEmailCode();
+          setSecondFactorStrategy("email_code");
+          setResendCountdown(30);
+        }
       } else if (signIn.status === "needs_client_trust") {
         // For other second factor strategies,
         // see https://clerk.com/docs/guides/development/custom-flows/authentication/client-trust
@@ -82,6 +76,7 @@ export default function Page() {
 
         if (emailCodeFactor) {
           await signIn.mfa.sendEmailCode();
+          setResendCountdown(30);
         }
       } else {
         console.error("Sign-in attempt not complete:", signIn);
@@ -94,111 +89,119 @@ export default function Page() {
       code: "",
     },
     onSubmit: async ({ value }) => {
-      await signIn.mfa.verifyEmailCode({ code: value.code });
+      if (secondFactorStrategy === "totp") {
+        await signIn.mfa.verifyTOTP({ code: value.code });
+      } else if (secondFactorStrategy === "phone_code") {
+        await signIn.mfa.verifyPhoneCode({ code: value.code });
+      } else {
+        // email_code (needs_second_factor) or needs_client_trust
+        await signIn.mfa.verifyEmailCode({ code: value.code });
+      }
 
       if (signIn.status === "complete") {
-        await signIn.finalize({
-          navigate: ({ session, decorateUrl }) => {
-            if (session?.currentTask) {
-              // Handle pending session tasks
-              // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
-              console.log(session?.currentTask);
-
-              return;
-            }
-
-            const url = decorateUrl("/");
-
-            if (url.startsWith("http")) {
-              window.location.href = url;
-            } else {
-              router.push(url as Href);
-            }
-          },
-        });
+        setIsNavigating(true);
+        await finalizeSignIn();
       } else {
         console.error("Sign-in attempt not complete:", signIn);
       }
     },
   });
 
+  async function finalizeSignIn() {
+    await signIn.finalize({
+      navigate: ({ session, decorateUrl }) => {
+        if (session?.currentTask) {
+          // Handle pending session tasks
+          // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
+          console.log(session?.currentTask);
+          return;
+        }
+
+        const url = decorateUrl("/");
+
+        if (url.startsWith("http")) {
+          window.location.href = url;
+        } else {
+          router.push(url as Href);
+        }
+      },
+    });
+  }
+
+  if (isNavigating) return null;
+
+  if (signIn.status === "needs_second_factor" && secondFactorStrategy) {
+    const subtitleByStrategy = {
+      totp: "Enter the 6-digit code from your authenticator app",
+      phone_code: "Enter the 6-digit code sent to your phone",
+      email_code: "Enter the 6-digit code sent to your email",
+    };
+
+    const handleResendSecondFactor =
+      secondFactorStrategy !== "totp"
+        ? async () => {
+            if (secondFactorStrategy === "phone_code") {
+              await signIn.mfa.sendPhoneCode();
+            } else {
+              await signIn.mfa.sendEmailCode();
+            }
+            setResendCountdown(30);
+          }
+        : undefined;
+
+    return (
+      <verifyForm.Field name="code">
+        {(field) => (
+          <verifyForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+            {([canSubmit, isSubmitting]) => (
+              <VerifyCodeScreen
+                title="Two-factor authentication"
+                subtitle={subtitleByStrategy[secondFactorStrategy]}
+                value={field.state.value}
+                onChange={field.handleChange}
+                onBlur={field.handleBlur}
+                onSubmit={() => verifyForm.handleSubmit()}
+                onBack={() => signIn.reset()}
+                isLoading={!!isSubmitting}
+                isDisabled={!canSubmit || !!isSubmitting || fetchStatus === "fetching"}
+                error={clerkErrors.fields.code?.message}
+                onResend={handleResendSecondFactor}
+                resendCountdown={resendCountdown}
+              />
+            )}
+          </verifyForm.Subscribe>
+        )}
+      </verifyForm.Field>
+    );
+  }
+
   if (signIn.status === "needs_client_trust") {
     return (
-      <View style={{ flex: 1 }}>
-        <SafeAreaView className="flex-1">
-          <View className="self-start">
-            <Button variant="ghost" onPress={() => signIn.reset()} className="-ml-2">
-              ← Back
-            </Button>
-          </View>
-          <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-            <View className="flex-1 gap-6 p-5">
-              <View className="items-center gap-4 mx-4 mb-2">
-                <Text className="text-3xl font-bold">Verify your account</Text>
-                <Text className="text-muted">Enter the the 6-digit code sent to your email</Text>
-              </View>
-
-              <Card className="gap-4 mx-4">
-                <Card.Body className="gap-4 items-center">
-                  <verifyForm.Field name="code">
-                    {(field) => (
-                      <View className="gap-2 items-center">
-                        <InputOTP
-                          maxLength={6}
-                          value={field.state.value}
-                          onChange={field.handleChange}
-                          onBlur={field.handleBlur}
-                          isInvalid={!!clerkErrors.fields.code}
-                          onComplete={() => verifyForm.handleSubmit()}
-                        >
-                          <InputOTP.Group>
-                            <InputOTP.Slot index={0} />
-                            <InputOTP.Slot index={1} />
-                            <InputOTP.Slot index={2} />
-                          </InputOTP.Group>
-                          <InputOTP.Separator />
-                          <InputOTP.Group>
-                            <InputOTP.Slot index={3} />
-                            <InputOTP.Slot index={4} />
-                            <InputOTP.Slot index={5} />
-                          </InputOTP.Group>
-                        </InputOTP>
-                        {clerkErrors.fields.code && (
-                          <FieldError>{clerkErrors.fields.code.message}</FieldError>
-                        )}
-                      </View>
-                    )}
-                  </verifyForm.Field>
-                </Card.Body>
-                <Card.Footer className="gap-3 flex-col">
-                  <verifyForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-                    {([canSubmit, isSubmitting]) => (
-                      <Button
-                        variant="primary"
-                        onPress={() => verifyForm.handleSubmit()}
-                        isDisabled={!canSubmit || isSubmitting || fetchStatus === "fetching"}
-                        className="w-full"
-                      >
-                        {isSubmitting ? "Verifying..." : "Verify"}
-                      </Button>
-                    )}
-                  </verifyForm.Subscribe>
-                </Card.Footer>
-              </Card>
-              <View className="items-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  isDisabled={resendCountdown > 0}
-                  onPress={handleResendCode}
-                >
-                  {resendCountdown > 0 ? `Resend code in ${resendCountdown}s` : "Resend code"}
-                </Button>
-              </View>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </View>
+      <verifyForm.Field name="code">
+        {(field) => (
+          <verifyForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+            {([canSubmit, isSubmitting]) => (
+              <VerifyCodeScreen
+                title="Verify your account"
+                subtitle="Enter the 6-digit code sent to your email"
+                value={field.state.value}
+                onChange={field.handleChange}
+                onBlur={field.handleBlur}
+                onSubmit={() => verifyForm.handleSubmit()}
+                onBack={() => signIn.reset()}
+                isLoading={!!isSubmitting}
+                isDisabled={!canSubmit || !!isSubmitting || fetchStatus === "fetching"}
+                error={clerkErrors.fields.code?.message}
+                onResend={async () => {
+                  await signIn.mfa.sendEmailCode();
+                  setResendCountdown(30);
+                }}
+                resendCountdown={resendCountdown}
+              />
+            )}
+          </verifyForm.Subscribe>
+        )}
+      </verifyForm.Field>
     );
   }
 
@@ -295,7 +298,7 @@ export default function Page() {
               </Card.Footer>
             </Card>
 
-            <View className="flex-row gap-1 justify-center ">
+            <View className="flex-row gap-1 justify-center">
               <Text className="text-sm text-muted">Don't have an account?</Text>
               <Link href="/sign-up" asChild>
                 <LinkButton size="sm">
