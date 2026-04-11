@@ -107,7 +107,13 @@ export default function Page() {
 
       if (signIn.status === "complete") {
         setIsNavigating(true);
-        await finalizeSignIn();
+
+        try {
+          await finalizeSignIn();
+        } catch (e) {
+          setIsNavigating(false);
+          throw e;
+        }
       } else {
         console.error("Sign-in attempt not complete:", signIn);
       }
