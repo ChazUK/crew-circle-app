@@ -21,6 +21,8 @@ export function CountryPicker({ value, onChange, placeholder = "Select a country
       label={label}
       listLabel="Select Country"
       snapPoints={["75%"]}
+      searchable={true}
+      searchPlaceholder="Search countries..."
     />
   );
 }

@@ -1,6 +1,6 @@
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { BottomSheetScrollView, BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { Select } from "heroui-native";
-import React from "react";
+import React, { useState } from "react";
 import { Text, View } from "react-native";
 
 export type PickerOption = {
@@ -16,6 +16,8 @@ type Props = {
   label?: string;
   listLabel?: string;
   snapPoints?: string[];
+  searchable?: boolean;
+  searchPlaceholder?: string;
 };
 
 export function Picker({
@@ -26,12 +28,25 @@ export function Picker({
   label,
   listLabel,
   snapPoints = ["50%"],
+  searchable = false,
+  searchPlaceholder = "Search...",
 }: Props) {
-  const selectedOption = value ? (options.find((o) => o.value === value) ?? null) : null;
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const selectedOption = value !== null ? (options.find((o) => o.value === value) ?? null) : null;
+
+  const visibleOptions =
+    searchable && searchTerm.length > 0
+      ? options.filter((o) => o.label.toLowerCase().includes(searchTerm.toLowerCase()))
+      : options;
 
   const handleValueChange = (option: (PickerOption | undefined) | (PickerOption | undefined)[]) => {
     const opt = Array.isArray(option) ? option[0] : option;
-    if (opt?.value) onChange(opt.value);
+    if (opt) onChange(opt.value);
+  };
+
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) setSearchTerm("");
   };
 
   return (
@@ -44,6 +59,7 @@ export function Picker({
       <Select
         value={selectedOption ?? undefined}
         onValueChange={handleValueChange}
+        onOpenChange={handleOpenChange}
         presentation="bottom-sheet"
       >
         <Select.Trigger>
@@ -54,8 +70,19 @@ export function Picker({
           <Select.Overlay />
           <Select.Content presentation="bottom-sheet" snapPoints={snapPoints}>
             {listLabel ? <Select.ListLabel className="mb-2">{listLabel}</Select.ListLabel> : null}
+            {searchable ? (
+              <BottomSheetTextInput
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                placeholder={searchPlaceholder}
+                className="mx-4 mb-2 px-3 py-2 rounded-lg border border-default-200 text-foreground bg-default-100"
+                clearButtonMode="while-editing"
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+            ) : null}
             <BottomSheetScrollView>
-              {options.map((option) => (
+              {visibleOptions.map((option) => (
                 <Select.Item key={option.value} value={option.value} label={option.label} />
               ))}
             </BottomSheetScrollView>
