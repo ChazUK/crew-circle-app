@@ -44,6 +44,7 @@ export function LanguageFluencySelector({ value, onChange }: Props) {
   };
 
   const updateFluency = (id: string, fluency: string) => {
+    if (!FLUENCY_OPTIONS.some((o) => o.value === fluency)) return;
     onChange(
       value.map((entry) =>
         entry.id === id ? { ...entry, fluency: fluency as FluencyLevel } : entry,
