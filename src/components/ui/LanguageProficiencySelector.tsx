@@ -4,10 +4,10 @@ import { View } from "react-native";
 
 import { LANGUAGES } from "@/data/languages";
 
-import { Picker } from "./Picker";
 import { RemovableChip } from "./RemovableChip";
+import { SelectSheet } from "./SelectSheet";
 
-export type ProficiencyLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+export type ProficiencyLevel = "Native" | "Fluent" | "Conversational" | "Basic";
 
 export type LanguageEntry = {
   language: string;
@@ -20,13 +20,13 @@ const ALL_LANGUAGE_OPTIONS = LANGUAGES.map(({ name, nativeName }) => ({
 }));
 
 const PROFICIENCY_OPTIONS: { value: ProficiencyLevel; label: string }[] = [
-  { value: "A1", label: "A1 — Beginner" },
-  { value: "A2", label: "A2 — Elementary" },
-  { value: "B1", label: "B1 — Intermediate" },
-  { value: "B2", label: "B2 — Upper Intermediate" },
-  { value: "C1", label: "C1 — Advanced" },
-  { value: "C2", label: "C2 — Proficient" },
+  { value: "Native", label: "Native" },
+  { value: "Fluent", label: "Fluent" },
+  { value: "Conversational", label: "Conversational" },
+  { value: "Basic", label: "Basic" },
 ];
+
+type Step = "idle" | "language" | "proficiency";
 
 type Props = {
   value: LanguageEntry[];
@@ -34,30 +34,43 @@ type Props = {
 };
 
 export function LanguageProficiencySelector({ value, onChange }: Props) {
-  const [isAdding, setIsAdding] = useState(false);
+  const [step, setStep] = useState<Step>("idle");
   const [pendingLanguage, setPendingLanguage] = useState<string | null>(null);
-  const [pendingProficiency, setPendingProficiency] = useState<ProficiencyLevel>("B1");
 
   const selectedLanguages = new Set(value.map((e) => e.language));
   const availableOptions = ALL_LANGUAGE_OPTIONS.filter((o) => !selectedLanguages.has(o.value));
-  const canAdd = availableOptions.length > 0 && !isAdding;
+  const canAdd = availableOptions.length > 0;
 
-  const startAdding = () => {
+  const handleAddPress = () => {
     setPendingLanguage(null);
-    setPendingProficiency("B1");
-    setIsAdding(true);
+    setStep("language");
   };
 
-  const cancelAdding = () => {
-    setIsAdding(false);
-    setPendingLanguage(null);
-    setPendingProficiency("B1");
+  const handleLanguageChange = (language: string) => {
+    setPendingLanguage(language);
+    setTimeout(() => setStep("proficiency"), 400);
   };
 
-  const confirmAdd = () => {
+  const handleProficiencyChange = (proficiency: string) => {
     if (!pendingLanguage) return;
-    onChange([...value, { language: pendingLanguage, proficiency: pendingProficiency }]);
-    cancelAdding();
+    if (!PROFICIENCY_OPTIONS.some((o) => o.value === proficiency)) return;
+    onChange([
+      ...value,
+      { language: pendingLanguage, proficiency: proficiency as ProficiencyLevel },
+    ]);
+    setPendingLanguage(null);
+    setStep("idle");
+  };
+
+  const handleLanguageOpenChange = (isOpen: boolean) => {
+    if (!isOpen && step === "language") setStep("idle");
+  };
+
+  const handleProficiencyOpenChange = (isOpen: boolean) => {
+    if (!isOpen && step === "proficiency") {
+      setPendingLanguage(null);
+      setStep("idle");
+    }
   };
 
   const removeLanguage = (language: string) => {
@@ -65,62 +78,42 @@ export function LanguageProficiencySelector({ value, onChange }: Props) {
   };
 
   return (
-    <View className="gap-2">
-      <View className="flex-row flex-wrap gap-2 p-3 rounded-xl border border-default-200 items-center min-h-[52px]">
-        {value.map((entry) => (
-          <RemovableChip
-            key={entry.language}
-            label={`${entry.language} (${entry.proficiency})`}
-            onRemove={() => removeLanguage(entry.language)}
-          />
-        ))}
-        {canAdd && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onPress={startAdding}
-            accessibilityLabel="Add language"
-          >
-            + Add
-          </Button>
-        )}
-      </View>
-
-      {isAdding && (
-        <View className="gap-3 p-3 rounded-xl border border-default-200 bg-default-50">
-          <Picker
-            value={pendingLanguage}
-            onChange={setPendingLanguage}
-            options={availableOptions}
-            label="Language"
-            listLabel="Select language"
-            placeholder="Select language"
-            snapPoints={["60%"]}
-            searchable
-            searchPlaceholder="Search languages..."
-          />
-          <Picker
-            value={pendingProficiency}
-            onChange={(p) => {
-              if (PROFICIENCY_OPTIONS.some((o) => o.value === p)) {
-                setPendingProficiency(p as ProficiencyLevel);
-              }
-            }}
-            options={PROFICIENCY_OPTIONS}
-            label="Proficiency"
-            listLabel="Select proficiency"
-            snapPoints={["40%"]}
-          />
-          <View className="flex-row gap-2 justify-end">
-            <Button variant="tertiary" size="sm" onPress={cancelAdding}>
-              Cancel
-            </Button>
-            <Button variant="primary" size="sm" onPress={confirmAdd} isDisabled={!pendingLanguage}>
-              Add
-            </Button>
-          </View>
-        </View>
+    <View className="flex-row flex-wrap gap-2 p-3 rounded-xl border border-default-200 items-center min-h-[52px]">
+      {value.map((entry) => (
+        <RemovableChip
+          key={entry.language}
+          label={`${entry.language} (${entry.proficiency})`}
+          onRemove={() => removeLanguage(entry.language)}
+        />
+      ))}
+      {canAdd && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onPress={handleAddPress}
+          accessibilityLabel="Add language"
+        >
+          + Add
+        </Button>
       )}
+      <SelectSheet
+        options={availableOptions}
+        onChange={handleLanguageChange}
+        isOpen={step === "language"}
+        onOpenChange={handleLanguageOpenChange}
+        listLabel="Select language"
+        snapPoints={["60%"]}
+        searchable
+        searchPlaceholder="Search languages..."
+      />
+      <SelectSheet
+        options={PROFICIENCY_OPTIONS}
+        onChange={handleProficiencyChange}
+        isOpen={step === "proficiency"}
+        onOpenChange={handleProficiencyOpenChange}
+        listLabel="Select proficiency"
+        snapPoints={["40%"]}
+      />
     </View>
   );
 }
