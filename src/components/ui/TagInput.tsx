@@ -12,8 +12,31 @@ type Props = {
 export function TagInput({ tags, onChange, placeholder = "Add a tag...", label }: Props) {
   const [inputValue, setInputValue] = useState("");
 
-  const addTag = (raw: string) => {
-    const trimmed = raw.replace(/,/g, "").trim();
+  const addTags = (raw: string) => {
+    const segments = raw.split(",");
+    const trailing = segments[segments.length - 1]?.trim() ?? "";
+    const completedSegments = segments.slice(0, -1);
+
+    const existing = new Set(tags.map((t) => t.toLowerCase()));
+    const newTags: string[] = [];
+
+    for (const segment of completedSegments) {
+      const trimmed = segment.trim();
+      if (!trimmed) continue;
+      const key = trimmed.toLowerCase();
+      if (existing.has(key)) continue;
+      existing.add(key);
+      newTags.push(trimmed);
+    }
+
+    if (newTags.length > 0) {
+      onChange([...tags, ...newTags]);
+    }
+    setInputValue(trailing);
+  };
+
+  const addSingleTag = (raw: string) => {
+    const trimmed = raw.trim();
     if (!trimmed) return;
     const isDuplicate = tags.some((t) => t.toLowerCase() === trimmed.toLowerCase());
     if (isDuplicate) {
@@ -30,7 +53,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag...", label }
 
   const handleChangeText = (text: string) => {
     if (text.includes(",")) {
-      addTag(text);
+      addTags(text);
     } else {
       setInputValue(text);
     }
@@ -45,7 +68,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag...", label }
             <Input
               value={inputValue}
               onChangeText={handleChangeText}
-              onSubmitEditing={() => addTag(inputValue)}
+              onSubmitEditing={() => addSingleTag(inputValue)}
               placeholder={placeholder}
               returnKeyType="done"
               blurOnSubmit={false}
@@ -56,7 +79,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag...", label }
         <Button
           variant="secondary"
           size="sm"
-          onPress={() => addTag(inputValue)}
+          onPress={() => addSingleTag(inputValue)}
           isDisabled={!inputValue.trim()}
           accessibilityLabel="Add tag"
         >
