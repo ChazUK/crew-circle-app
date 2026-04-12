@@ -25,7 +25,10 @@ export function SelectSheetContent({
   renderItem,
 }: Props) {
   const { height: windowHeight } = useWindowDimensions();
-  const dynamicSizing = snapPoints === undefined;
+  // Searchable sheets must use a fixed snap point — dynamic sizing would
+  // shrink the sheet as filtered results reduce, making it unusable.
+  const dynamicSizing = snapPoints === undefined && !searchable;
+  const resolvedSnapPoints = dynamicSizing ? undefined : (snapPoints ?? ["70%"]);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -42,7 +45,7 @@ export function SelectSheetContent({
       <Select.Overlay />
       <Select.Content
         presentation="bottom-sheet"
-        snapPoints={dynamicSizing ? undefined : snapPoints}
+        snapPoints={resolvedSnapPoints}
         enableDynamicSizing={dynamicSizing}
       >
         {listLabel ? <Select.ListLabel className="mb-2">{listLabel}</Select.ListLabel> : null}

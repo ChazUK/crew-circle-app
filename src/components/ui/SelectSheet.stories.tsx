@@ -1,11 +1,11 @@
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import type { Meta, StoryObj } from "@storybook/react-native";
-import { Button } from "heroui-native";
+import { Button, Select } from "heroui-native";
 import { useState } from "react";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaView } from "react-native-safe-area-context";
 
+import { type PickerOption } from "./Picker";
 import { SelectSheet } from "./SelectSheet";
 
 const meta = {
@@ -14,13 +14,11 @@ const meta = {
   decorators: [
     (Story) => (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaView>
-          <BottomSheetModalProvider>
-            <View style={{ flex: 1, padding: 16, backgroundColor: "#f9f9f9" }}>
-              <Story />
-            </View>
-          </BottomSheetModalProvider>
-        </SafeAreaView>
+        <BottomSheetModalProvider>
+          <View style={{ flex: 1, padding: 16, backgroundColor: "#f9f9f9" }}>
+            <Story />
+          </View>
+        </BottomSheetModalProvider>
       </GestureHandlerRootView>
     ),
   ],
@@ -46,14 +44,41 @@ const FRUIT_OPTIONS = [
   { value: "orange", label: "Orange" },
 ];
 
-const COUNTRY_OPTIONS = [
-  { value: "au", label: "Australia" },
-  { value: "ca", label: "Canada" },
-  { value: "de", label: "Germany" },
-  { value: "fr", label: "France" },
-  { value: "gb", label: "United Kingdom" },
-  { value: "jp", label: "Japan" },
-  { value: "us", label: "United States" },
+const PRIORITY_OPTIONS: PickerOption[] = [
+  { value: "urgent", label: "Urgent" },
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+];
+
+const PRIORITY_EMOJI: Record<string, string> = {
+  urgent: "🔴",
+  high: "🟠",
+  medium: "🟡",
+  low: "🟢",
+};
+
+const LANGUAGE_OPTIONS: PickerOption[] = [
+  { value: "c", label: "C" },
+  { value: "cpp", label: "C++" },
+  { value: "csharp", label: "C#" },
+  { value: "dart", label: "Dart" },
+  { value: "elixir", label: "Elixir" },
+  { value: "go", label: "Go" },
+  { value: "haskell", label: "Haskell" },
+  { value: "java", label: "Java" },
+  { value: "javascript", label: "JavaScript" },
+  { value: "kotlin", label: "Kotlin" },
+  { value: "lua", label: "Lua" },
+  { value: "ocaml", label: "OCaml" },
+  { value: "php", label: "PHP" },
+  { value: "python", label: "Python" },
+  { value: "ruby", label: "Ruby" },
+  { value: "rust", label: "Rust" },
+  { value: "scala", label: "Scala" },
+  { value: "swift", label: "Swift" },
+  { value: "typescript", label: "TypeScript" },
+  { value: "zig", label: "Zig" },
 ];
 
 const ControlledRender: Story["render"] = (args) => {
@@ -63,8 +88,9 @@ const ControlledRender: Story["render"] = (args) => {
   return (
     <View className="gap-3">
       <Button variant="secondary" onPress={() => setIsOpen(true)}>
-        {selected ? `Selected: ${selected}` : "Open sheet"}
+        Open sheet
       </Button>
+      <Text>{selected ? `Selected: ${selected}` : "No selection"}</Text>
       <SelectSheet
         {...args}
         isOpen={isOpen}
@@ -79,29 +105,40 @@ const ControlledRender: Story["render"] = (args) => {
 };
 
 export const Default: Story = {
+  args: { options: FRUIT_OPTIONS },
+  render: ControlledRender,
+};
+
+export const WithLabel: Story = {
   args: { options: FRUIT_OPTIONS, listLabel: "Select a fruit" },
   render: ControlledRender,
 };
 
 export const WithSearch: Story = {
   args: {
-    options: COUNTRY_OPTIONS,
-    listLabel: "Select a country",
+    options: FRUIT_OPTIONS,
     searchable: true,
-    searchPlaceholder: "Search countries...",
-    snapPoints: ["60%"],
+    searchPlaceholder: "Search fruits...",
   },
   render: ControlledRender,
 };
 
-export const SmallList: Story = {
+export const CustomRendererItems: Story = {
   args: {
-    options: [
-      { value: "yes", label: "Yes" },
-      { value: "no", label: "No" },
-      { value: "maybe", label: "Maybe" },
-    ],
-    listLabel: "Choose an option",
+    options: PRIORITY_OPTIONS,
+    renderItem: (option) => (
+      <View className="flex-row items-center gap-2">
+        <Text>{PRIORITY_EMOJI[option.value]}</Text>
+        <Select.ItemLabel />
+      </View>
+    ),
+  },
+  render: ControlledRender,
+};
+
+export const Scrollable: Story = {
+  args: {
+    options: LANGUAGE_OPTIONS,
   },
   render: ControlledRender,
 };
