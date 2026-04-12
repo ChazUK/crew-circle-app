@@ -1,6 +1,8 @@
-import { Button, Chip, CloseButton, Input, Label, TextField } from "heroui-native";
+import { Button, Input, Label, TextField } from "heroui-native";
 import { useState } from "react";
 import { View } from "react-native";
+
+import { RemovableChip } from "./RemovableChip";
 
 type Props = {
   tags: string[];
@@ -99,17 +101,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag...", label, 
           accessibilityLabel="Tags"
         >
           {tags.map((tag) => (
-            <View key={tag} className="flex-row items-center">
-              <Chip animation="disable-all" color="default" variant="soft">
-                <View className="flex-row items-center gap-1 pl-1">
-                  <Chip.Label>{tag}</Chip.Label>
-                  <CloseButton
-                    onPress={() => removeTag(tag)}
-                    accessibilityLabel={`Remove ${tag}`}
-                  />
-                </View>
-              </Chip>
-            </View>
+            <RemovableChip key={tag} label={tag} onRemove={() => removeTag(tag)} />
           ))}
         </View>
       )}
