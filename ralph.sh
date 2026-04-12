@@ -259,16 +259,6 @@ Update it at the start of every step so a future iteration can resume without re
 - Read \`UBIQUITOUS_LANGUAGE.md\` for domain terminology
 - Explore the relevant files (\`src/\`, \`convex/\`) before touching anything
 - Check \`git log --oneline -20\` for recent related changes
-Blockers: []
-\`\`\`
-
-Update it at the start of every step so a future iteration can resume without re-exploring.
-
-### Step 1 — Understand before implementing
-- Re-read the issue carefully
-- Read \`UBIQUITOUS_LANGUAGE.md\` for domain terminology
-- Explore the relevant files (\`src/\`, \`convex/\`) before touching anything
-- Check \`git log --oneline -20\` for recent related changes
 
 ### Step 2 — Plan (small steps)
 Break the work into the smallest possible independent commits.
@@ -409,7 +399,7 @@ run_claude() {
 set -euo pipefail
 # Read prompt into a variable — avoids re-expansion of special chars when passing to -p
 prompt=$(cat .ralph-prompt.txt)
-exec claude --dangerously-skip-permissions --verbose --output-format stream-json -p "$prompt"
+exec claude --dangerously-skip-permissions --output-format stream-json -p "$prompt"
 RUNNER
     chmod +x "$worktree/.ralph-run.sh"
 
@@ -425,7 +415,7 @@ RUNNER
       # Read prompt into a variable — avoids re-expansion of special chars when passing to -p
       local prompt
       prompt=$(cat "$prompt_file")
-      claude --dangerously-skip-permissions --verbose --output-format stream-json \
+      claude --dangerously-skip-permissions --output-format stream-json \
         -p "$prompt" \
         2>&1 | tee "$log_file"
     )
@@ -476,7 +466,15 @@ agent_loop() {
     # ── Set up isolated git worktree ───────────────────────────
     local title_slug
     title_slug=$(echo "$issue_title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-\|-$//g' | cut -c1-50)
-    local branch="ralph/${issue_number}-${title_slug}"
+
+    # Derive conventional-commit branch type from the issue title
+    local branch_type="feat"
+    if echo "$issue_title" | grep -iEq '^(fix|bug|hotfix|patch|correct|repair)'; then
+      branch_type="fix"
+    elif echo "$issue_title" | grep -iEq '^(chore|update|upgrade|bump|clean|refactor|tidy|docs|ci|test|style)'; then
+      branch_type="chore"
+    fi
+    local branch="${branch_type}/${issue_number}-${title_slug}"
     local worktree="${WORKTREES_DIR}/agent-${agent_id}"
 
     # Remove stale worktree if present
