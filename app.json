@@ -14,7 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.crewcircle.crewcircle"
+      "bundleIdentifier": "com.crewcircle.crewcircle",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "CrewCircle needs access to your photo library to upload a profile photo.",
+        "NSCameraUsageDescription": "CrewCircle needs access to your camera to take a profile photo."
+      }
     },
     "android": {
       "icon": "./src/assets/icons/adaptive-icon.png",
