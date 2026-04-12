@@ -68,3 +68,33 @@ export const EmptyWithPlaceholder: Story = {
   },
   render: InteractiveRender,
 };
+
+export const WithMaxTags: Story = {
+  args: {
+    label: "Skills (max 3)",
+    placeholder: "Add a skill...",
+    tags: [],
+    maxTags: 3,
+  },
+  render: InteractiveRender,
+};
+
+export const WithMaxTagsAlmostFull: Story = {
+  args: {
+    label: "Skills (max 3)",
+    placeholder: "Add a skill...",
+    tags: ["Drone operator", "Steadicam"],
+    maxTags: 3,
+  },
+  render: InteractiveRender,
+};
+
+export const WithMaxTagsFull: Story = {
+  args: {
+    label: "Skills (max 3)",
+    placeholder: "Add a skill...",
+    tags: ["Drone operator", "Underwater camera", "Steadicam"],
+    maxTags: 3,
+  },
+  render: InteractiveRender,
+};

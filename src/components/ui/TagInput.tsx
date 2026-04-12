@@ -7,10 +7,13 @@ type Props = {
   onChange: (tags: string[]) => void;
   placeholder?: string;
   label?: string;
+  maxTags?: number;
 };
 
-export function TagInput({ tags, onChange, placeholder = "Add a tag...", label }: Props) {
+export function TagInput({ tags, onChange, placeholder = "Add a tag...", label, maxTags }: Props) {
   const [inputValue, setInputValue] = useState("");
+
+  const isAtMax = maxTags !== undefined && tags.length >= maxTags;
 
   const addTags = (raw: string) => {
     const segments = raw.split(",");
@@ -21,6 +24,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag...", label }
     const newTags: string[] = [];
 
     for (const segment of completedSegments) {
+      if (maxTags !== undefined && tags.length + newTags.length >= maxTags) break;
       const trimmed = segment.trim();
       if (!trimmed) continue;
       const key = trimmed.toLowerCase();
@@ -38,6 +42,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag...", label }
   const addSingleTag = (raw: string) => {
     const trimmed = raw.trim();
     if (!trimmed) return;
+    if (maxTags !== undefined && tags.length >= maxTags) return;
     const isDuplicate = tags.some((t) => t.toLowerCase() === trimmed.toLowerCase());
     if (isDuplicate) {
       setInputValue("");
@@ -72,6 +77,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag...", label }
               placeholder={placeholder}
               returnKeyType="done"
               blurOnSubmit={false}
+              isDisabled={isAtMax}
               accessibilityLabel={label ?? placeholder}
             />
           </TextField>
@@ -80,7 +86,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag...", label }
           variant="secondary"
           size="sm"
           onPress={() => addSingleTag(inputValue)}
-          isDisabled={!inputValue.trim()}
+          isDisabled={!inputValue.trim() || isAtMax}
           accessibilityLabel="Add tag"
         >
           Add
