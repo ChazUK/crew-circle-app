@@ -1,6 +1,6 @@
 import { BottomSheetScrollView, BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { Select } from "heroui-native";
-import React, { useState } from "react";
+import React, { type ReactNode, useState } from "react";
 import { Text, View } from "react-native";
 
 export type PickerOption = {
@@ -18,6 +18,7 @@ type Props = {
   snapPoints?: string[];
   searchable?: boolean;
   searchPlaceholder?: string;
+  renderItem?: (option: PickerOption) => ReactNode;
 };
 
 export function Picker({
@@ -30,6 +31,7 @@ export function Picker({
   snapPoints = ["50%"],
   searchable = false,
   searchPlaceholder = "Search...",
+  renderItem,
 }: Props) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -83,7 +85,14 @@ export function Picker({
             ) : null}
             <BottomSheetScrollView>
               {visibleOptions.map((option) => (
-                <Select.Item key={option.value} value={option.value} label={option.label} />
+                <Select.Item key={option.value} value={option.value} label={option.label}>
+                  {renderItem ? (
+                    renderItem(option)
+                  ) : (
+                    <Select.ItemLabel>{option.label}</Select.ItemLabel>
+                  )}
+                  <Select.ItemIndicator />
+                </Select.Item>
               ))}
             </BottomSheetScrollView>
           </Select.Content>

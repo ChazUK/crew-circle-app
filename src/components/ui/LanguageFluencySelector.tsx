@@ -1,5 +1,7 @@
-import { Button, Input, Label, TextField } from "heroui-native";
+import { Button } from "heroui-native";
 import { View } from "react-native";
+
+import { LANGUAGES } from "@/data/languages";
 
 import { Picker } from "./Picker";
 
@@ -9,6 +11,11 @@ export type LanguageEntry = {
   language: string;
   fluency: FluencyLevel;
 };
+
+const LANGUAGE_OPTIONS = LANGUAGES.map(({ name, nativeName }) => ({
+  value: name,
+  label: name === nativeName ? name : `${name} (${nativeName})`,
+}));
 
 const FLUENCY_OPTIONS: { value: FluencyLevel; label: string }[] = [
   { value: "Native", label: "Native" },
@@ -52,16 +59,19 @@ export function LanguageFluencySelector({ value, onChange }: Props) {
           accessibilityLabel={`Language entry ${index + 1}`}
         >
           <View className="flex-row gap-2 items-end">
-            <TextField className="flex-[2]">
-              <Label>Language</Label>
-              <Input
-                value={entry.language}
-                onChangeText={(text) => updateLanguage(index, text)}
-                placeholder="e.g. English"
-                autoCapitalize="words"
-                autoCorrect={false}
+            <View className="flex-2">
+              <Picker
+                value={entry.language || null}
+                onChange={(language) => updateLanguage(index, language)}
+                options={LANGUAGE_OPTIONS}
+                label="Language"
+                listLabel="Select language"
+                placeholder="Select language"
+                snapPoints={["60%"]}
+                searchable
+                searchPlaceholder="Search languages..."
               />
-            </TextField>
+            </View>
             <View className="flex-1">
               <Picker
                 value={entry.fluency}
