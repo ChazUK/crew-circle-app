@@ -1,4 +1,4 @@
-import { MutationCtx } from "@convex/server";
+import { MutationCtx } from "@convex/_generated/server";
 
 import { getUserByExternalId } from "../db/getUser";
 import { upsertUser } from "../db/upsertUser";

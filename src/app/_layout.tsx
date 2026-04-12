@@ -1,7 +1,7 @@
 import "../global.css";
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
-import { api } from "@convex/api";
+import { api } from "@convex/_generated/api";
 import { ConvexReactClient, useConvexAuth } from "convex/react";
 import { useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";

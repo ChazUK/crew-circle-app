@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-vi.mock("@convex/server", () => ({
+vi.mock("@convex/_generated/server", () => ({
   httpAction: (fn: unknown) => fn,
 }));
 
-vi.mock("@convex/api", () => ({
+vi.mock("@convex/_generated/api", () => ({
   internal: {
     users: {
       webhooks: {

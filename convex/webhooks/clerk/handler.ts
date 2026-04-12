@@ -1,6 +1,6 @@
 import { verifyWebhook } from "@clerk/backend/webhooks";
-import { internal } from "@convex/api";
-import { httpAction } from "@convex/server";
+import { internal } from "@convex/_generated/api";
+import { httpAction } from "@convex/_generated/server";
 
 export const handleClerkWebhook = httpAction(async (ctx, request) => {
   const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
