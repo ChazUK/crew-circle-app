@@ -9,7 +9,6 @@ type Props = {
   onChange: (value: string) => void;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  listLabel?: string;
   snapPoints?: string[];
   searchable?: boolean;
   searchPlaceholder?: string;
@@ -21,7 +20,6 @@ export function SelectSheet({
   onChange,
   isOpen,
   onOpenChange,
-  listLabel,
   snapPoints,
   searchable = false,
   searchPlaceholder = "Search...",
@@ -29,6 +27,7 @@ export function SelectSheet({
 }: Props) {
   const handleValueChange = (option: (PickerOption | undefined) | (PickerOption | undefined)[]) => {
     const opt = Array.isArray(option) ? option[0] : option;
+
     if (opt) onChange(opt.value);
   };
 
@@ -39,10 +38,13 @@ export function SelectSheet({
       onValueChange={handleValueChange}
       presentation="bottom-sheet"
     >
+      <Select.Trigger>
+        <Select.Value placeholder="Select an option" />
+        <Select.TriggerIndicator />
+      </Select.Trigger>
       <SelectSheetContent
         options={options}
         isOpen={isOpen}
-        listLabel={listLabel}
         snapPoints={snapPoints}
         searchable={searchable}
         searchPlaceholder={searchPlaceholder}

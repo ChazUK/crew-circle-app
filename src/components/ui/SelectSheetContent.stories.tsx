@@ -2,7 +2,7 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import type { Meta, StoryObj } from "@storybook/react-native";
 import { Button, Select } from "heroui-native";
 import { useState } from "react";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { SelectSheetContent } from "./SelectSheetContent";
@@ -32,14 +32,6 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const SKILL_OPTIONS = [
-  { value: "drone", label: "Drone operator" },
-  { value: "steadicam", label: "Steadicam" },
-  { value: "underwater", label: "Underwater camera" },
-  { value: "aerial", label: "Aerial photography" },
-  { value: "timelapse", label: "Timelapse" },
-];
-
 const COUNTRY_OPTIONS = [
   { value: "au", label: "Australia" },
   { value: "ca", label: "Canada" },
@@ -52,53 +44,88 @@ const COUNTRY_OPTIONS = [
 ];
 
 const ControlledRender: Story["render"] = (args) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
-
   return (
-    <View className="gap-3">
-      <Button variant="secondary" onPress={() => setIsOpen(true)}>
-        {selected ? `Selected: ${selected}` : "Open sheet"}
-      </Button>
-      <Select
-        isOpen={isOpen}
-        onOpenChange={setIsOpen}
-        onValueChange={(opt) => {
-          const o = Array.isArray(opt) ? opt[0] : opt;
-          if (o) {
-            setSelected(o.value);
-            setIsOpen(false);
-          }
-        }}
-        presentation="bottom-sheet"
-      >
-        <SelectSheetContent {...args} isOpen={isOpen} />
-      </Select>
-    </View>
+    <Select presentation="bottom-sheet" className="flex-1">
+      <Select.Trigger>
+        <Select.Value placeholder="Select..." />
+        <Select.TriggerIndicator />
+      </Select.Trigger>
+      <Select.Portal>
+        <Select.Overlay className="bg-black/10" />
+        <SelectSheetContent {...args} />
+      </Select.Portal>
+    </Select>
   );
 };
 
 export const Default: Story = {
-  args: { options: SKILL_OPTIONS, listLabel: "Select a skill" },
-  render: ControlledRender,
-};
-
-export const WithSearch: Story = {
   args: {
     options: COUNTRY_OPTIONS,
-    listLabel: "Select a country",
-    searchable: true,
-    searchPlaceholder: "Search countries...",
-    snapPoints: ["60%"],
   },
   render: ControlledRender,
 };
 
-export const SmallSnapPoint: Story = {
+export const ShortList: Story = {
   args: {
-    options: SKILL_OPTIONS,
-    listLabel: "Select a skill",
-    snapPoints: ["30%"],
+    options: [
+      { value: "1", label: "Option 1" },
+      { value: "2", label: "Option 2" },
+      { value: "3", label: "Option 3" },
+    ],
+  },
+  render: ControlledRender,
+};
+
+export const LongList: Story = {
+  args: {
+    scrollable: true,
+    options: Array.from({ length: 100 }, (_, i) => ({
+      value: `item-${i}`,
+      label: `Item ${i}`,
+    })),
+  },
+  render: ControlledRender,
+};
+
+export const Searchable: Story = {
+  args: {
+    options: COUNTRY_OPTIONS,
+    searchable: true,
+  },
+  render: ControlledRender,
+};
+
+export const WithSearchPlaceholder: Story = {
+  args: {
+    options: COUNTRY_OPTIONS,
+    searchable: true,
+    searchPlaceholder: "Search countries...",
+  },
+  render: ControlledRender,
+};
+
+export const WithCustomRender: Story = {
+  args: {
+    options: COUNTRY_OPTIONS,
+    renderItem: (option) => (
+      <View className="flex-row items-center gap-2">
+        <Text>{option.value.toUpperCase()}</Text>
+        <Select.ItemLabel />
+      </View>
+    ),
+  },
+  render: ControlledRender,
+};
+
+export const WithCustomFilter: Story = {
+  args: {
+    options: COUNTRY_OPTIONS,
+    searchable: true,
+    filterFn: (option, searchValue) => {
+      const search = searchValue.toLowerCase();
+
+      return [option.value, option.label].some((field) => field.toLowerCase().includes(search));
+    },
   },
   render: ControlledRender,
 };

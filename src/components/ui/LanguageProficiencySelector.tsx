@@ -53,7 +53,9 @@ export function LanguageProficiencySelector({ value, onChange }: Props) {
 
   const handleProficiencyChange = (proficiency: string) => {
     if (!pendingLanguage) return;
+
     if (!PROFICIENCY_OPTIONS.some((o) => o.value === proficiency)) return;
+
     onChange([
       ...value,
       { language: pendingLanguage, proficiency: proficiency as ProficiencyLevel },
