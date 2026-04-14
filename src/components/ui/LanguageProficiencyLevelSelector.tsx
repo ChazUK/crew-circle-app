@@ -1,13 +1,6 @@
 import { BottomSheetScrollView, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  Button,
-  ScrollShadow,
-  SearchField,
-  Select,
-  useBottomSheetAwareHandlers,
-  useThemeColor,
-} from "heroui-native";
+import { Button, ScrollShadow, Select, useThemeColor } from "heroui-native";
 import { useCallback, useMemo, useState } from "react";
 import { View } from "react-native";
 
@@ -17,6 +10,7 @@ import {
 } from "@/data/language-proficiency-levels";
 import { type Language, LANGUAGES } from "@/data/languages";
 
+import { BottomSheetSearchField } from "./BottomSheetSearchField";
 import { RemovableChip } from "./RemovableChip";
 
 export type LanguageProficiencyEntry = {
@@ -148,10 +142,7 @@ const LanguageSelectSheet = ({
 
     if (!q) return options;
 
-    const filter = (option: SelectOption, searchValue: string) => {
-      return option.label.toLowerCase().includes(searchValue.toLowerCase());
-    };
-    return options.filter((option) => filter(option, q));
+    return options.filter((option: SelectOption) => option.label.toLowerCase().includes(q));
   }, [searchValue, options]);
 
   return (
@@ -166,7 +157,7 @@ const LanguageSelectSheet = ({
         <Select.Overlay className="bg-black/50" />
         <Select.Content
           presentation="bottom-sheet"
-          snapPoints={["50%", "80%"]}
+          snapPoints={["50%", "90%"]}
           keyboardBehavior="extend"
           enableDynamicSizing={false}
           enableOverDrag={false}
@@ -231,33 +222,5 @@ const LangaugeProficiencyLevelSelectSheet = ({
         </Select.Content>
       </Select.Portal>
     </Select>
-  );
-};
-
-const BottomSheetSearchField = ({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) => {
-  const { onFocus, onBlur } = useBottomSheetAwareHandlers();
-
-  return (
-    <SearchField value={value} onChange={onChange} className="mb-3 px-4 pt-3">
-      <SearchField.Group>
-        <SearchField.SearchIcon />
-        <SearchField.Input
-          autoCapitalize="sentences"
-          autoCorrect={true}
-          onFocus={onFocus}
-          onBlur={onBlur}
-          placeholder={placeholder}
-        />
-        <SearchField.ClearButton />
-      </SearchField.Group>
-    </SearchField>
   );
 };
