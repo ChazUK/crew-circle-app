@@ -1,18 +1,21 @@
 import { useAuth, useSignUp } from "@clerk/expo";
 import { useForm } from "@tanstack/react-form";
-import { type Href, useRouter } from "expo-router";
+import { Button } from "heroui-native";
 import { useEffect, useState } from "react";
+import { Pressable, Text, View } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { withUniwind } from "uniwind";
 
-import { SignUpFormScreen } from "@/components/auth/SignUpFormScreen";
-import { VerifyCodeScreen } from "@/components/ui/VerifyCodeScreen";
+import { ProgressIndicator } from "@/components/ui/ProgressIndicator";
+
+const StyledSafeAreaView = withUniwind(SafeAreaView);
+const totalSteps = 5;
 
 export default function Page() {
+  const [currentStep, setCurrentStep] = useState(1);
   const { signUp, errors: clerkErrors, fetchStatus } = useSignUp();
   const { isSignedIn } = useAuth();
-  const router = useRouter();
-
-  const [pendingVerification, setPendingVerification] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -20,126 +23,22 @@ export default function Page() {
     };
   }, []);
 
-  const signUpForm = useForm({
-    defaultValues: {
-      emailAddress: "",
-      password: "",
-    },
-    onSubmit: async ({ value }) => {
-      const { error } = await signUp.password({
-        emailAddress: value.emailAddress,
-        password: value.password,
-      });
-
-      if (error) {
-        console.error(JSON.stringify(error, null, 2));
-        return;
-      }
-
-      const { error: sendError } = await signUp.verifications.sendEmailCode();
-
-      if (sendError) {
-        console.error(JSON.stringify(sendError, null, 2));
-        return;
-      }
-
-      setPendingVerification(true);
-    },
-  });
-
-  const verifyForm = useForm({
-    defaultValues: {
-      code: "",
-    },
-    onSubmit: async ({ value }) => {
-      await signUp.verifications.verifyEmailCode({ code: value.code });
-
-      if (signUp.status === "complete") {
-        await signUp.finalize({
-          navigate: ({ session, decorateUrl }) => {
-            if (session?.currentTask) {
-              console.log(session?.currentTask);
-              return;
-            }
-            router.replace(decorateUrl("/") as Href);
-          },
-        });
-      } else {
-        console.error("Sign-up attempt not complete:", signUp);
-      }
-    },
-  });
-
-  if (signUp.status === "complete" || isSignedIn) {
-    return null;
-  }
-
-  if (pendingVerification) {
-    return (
-      <verifyForm.Field name="code">
-        {(field) => (
-          <verifyForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-            {([canSubmit, isSubmitting]) => (
-              <VerifyCodeScreen
-                title="Verify your email"
-                subtitle="Enter the 6-digit code sent to your email"
-                value={field.state.value}
-                onChange={field.handleChange}
-                onBlur={field.handleBlur}
-                onSubmit={() => verifyForm.handleSubmit()}
-                onBack={() => setPendingVerification(false)}
-                isLoading={!!isSubmitting}
-                isDisabled={!canSubmit || !!isSubmitting || fetchStatus === "fetching"}
-                error={clerkErrors.fields.code?.message ?? clerkErrors.global?.[0]?.message}
-                onResend={() => signUp.verifications.sendEmailCode()}
-              />
-            )}
-          </verifyForm.Subscribe>
-        )}
-      </verifyForm.Field>
-    );
-  }
-
   return (
-    <signUpForm.Field name="emailAddress">
-      {(emailField) => (
-        <signUpForm.Field name="password">
-          {(passwordField) => (
-            <signUpForm.Subscribe selector={(state) => [state.isSubmitting, state.values]}>
-              {([isSubmitting, values]) => {
-                const { emailAddress, password } = values as {
-                  emailAddress: string;
-                  password: string;
-                };
-                return (
-                  <SignUpFormScreen
-                    emailValue={emailAddress}
-                    onEmailChange={emailField.handleChange}
-                    onEmailBlur={emailField.handleBlur}
-                    emailError={clerkErrors.fields.emailAddress?.message}
-                    passwordValue={password}
-                    onPasswordChange={passwordField.handleChange}
-                    onPasswordBlur={passwordField.handleBlur}
-                    passwordError={clerkErrors.fields.password?.message}
-                    showPassword={showPassword}
-                    onToggleShowPassword={() => setShowPassword((v) => !v)}
-                    isSubmitting={!!(isSubmitting as boolean)}
-                    isDisabled={
-                      !emailAddress ||
-                      !password ||
-                      !!(isSubmitting as boolean) ||
-                      fetchStatus === "fetching"
-                    }
-                    globalError={clerkErrors.global?.[0]?.message}
-                    onSubmit={() => signUpForm.handleSubmit()}
-                    onBack={() => router.back()}
-                  />
-                );
-              }}
-            </signUpForm.Subscribe>
-          )}
-        </signUpForm.Field>
-      )}
-    </signUpForm.Field>
+    <StyledSafeAreaView className="flex-1">
+      <View className="flex-row gap-4 mx-4 my-4">
+        <Pressable onPress={() => setCurrentStep((prev) => Math.max(1, prev - 1))}>
+          <Text>Back</Text>
+        </Pressable>
+        <ProgressIndicator className="flex-1" currentStep={currentStep} totalSteps={totalSteps} />
+      </View>
+      <ScrollView contentContainerStyle={{ flex: 1, flexDirection: "column" }}></ScrollView>
+      <Button
+        className="mx-4"
+        isDisabled={currentStep >= totalSteps}
+        onPress={() => setCurrentStep((prev) => Math.min(totalSteps, prev + 1))}
+      >
+        Continue
+      </Button>
+    </StyledSafeAreaView>
   );
 }
