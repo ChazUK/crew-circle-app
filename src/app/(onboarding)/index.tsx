@@ -1,5 +1,6 @@
 import { useUser } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
+import { useForm } from "@tanstack/react-form";
 import { useMutation } from "convex/react";
 import { Button } from "heroui-native";
 import { useState } from "react";
@@ -17,48 +18,56 @@ const StyledSafeAreaView = withUniwind(SafeAreaView);
 
 export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1);
-  const [useCase, setUseCase] = useState<UseCase | null>(null);
-  const [departments, setDepartments] = useState<string[]>([]);
 
   const { user: clerkUser } = useUser();
   const completeOnboarding = useMutation(api.users.mutations.completeOnboarding);
 
-  const totalSteps = useCase === "crew" ? 2 : 1;
+  const form = useForm({
+    defaultValues: {
+      useCase: null as UseCase | null,
+      departments: [] as string[],
+    },
+    onSubmit: async ({ value }) => {
+      await completeOnboarding({
+        firstName: clerkUser?.firstName ?? "",
+        lastName: clerkUser?.lastName ?? "",
+        userType: value.useCase === "crew" ? "crew" : "production-manager",
+        departments: value.departments.length > 0 ? value.departments : undefined,
+      });
+    },
+  });
 
   function goBack() {
     if (currentStep > 1) setCurrentStep((prev) => prev - 1);
   }
 
-  async function finish(depts: string[]) {
-    await completeOnboarding({
-      firstName: clerkUser?.firstName ?? "",
-      lastName: clerkUser?.lastName ?? "",
-      userType: useCase === "crew" ? "crew" : "production-manager",
-      departments: depts.length > 0 ? depts : undefined,
-    });
-  }
-
-  const continueDisabled =
-    (currentStep === 1 && useCase === null) || (currentStep === 2 && departments.length === 0);
-
-  function handleContinue() {
+  async function handleContinue() {
+    const useCase = form.getFieldValue("useCase");
     if (currentStep === 1) {
       if (useCase === "crew") {
         setCurrentStep(2);
       } else {
-        finish([]);
+        await form.handleSubmit();
       }
     } else if (currentStep === 2) {
-      finish(departments);
+      await form.handleSubmit();
     }
   }
 
   function renderStep() {
     switch (currentStep) {
       case 1:
-        return <UseCaseStep value={useCase} onChange={setUseCase} />;
+        return (
+          <form.Field name="useCase">
+            {(field) => <UseCaseStep value={field.state.value} onChange={field.handleChange} />}
+          </form.Field>
+        );
       case 2:
-        return <DepartmentStep value={departments} onChange={setDepartments} />;
+        return (
+          <form.Field name="departments">
+            {(field) => <DepartmentStep value={field.state.value} onChange={field.handleChange} />}
+          </form.Field>
+        );
       default:
         return null;
     }
@@ -66,23 +75,39 @@ export default function OnboardingPage() {
 
   return (
     <StyledSafeAreaView className="flex-1">
-      <View className="flex-row items-center gap-4 mx-4 my-4">
-        {currentStep > 1 && <BackButton onPress={goBack} />}
-        <ProgressIndicator className="flex-1" currentStep={currentStep} totalSteps={totalSteps} />
-      </View>
+      <form.Subscribe selector={(s) => s.values.useCase}>
+        {(useCase) => (
+          <View className="flex-row items-center gap-4 mx-4 my-4">
+            {currentStep > 1 && <BackButton onPress={goBack} />}
+            <ProgressIndicator
+              className="flex-1"
+              currentStep={currentStep}
+              totalSteps={useCase === "crew" ? 2 : 1}
+            />
+          </View>
+        )}
+      </form.Subscribe>
 
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         <View className="flex-1 gap-6 py-2">{renderStep()}</View>
       </ScrollView>
 
-      <Button
-        variant="primary"
-        className="mx-4 mb-2"
-        isDisabled={continueDisabled}
-        onPress={handleContinue}
-      >
-        Continue
-      </Button>
+      <form.Subscribe selector={(s) => ({ isSubmitting: s.isSubmitting, values: s.values })}>
+        {({ isSubmitting, values }) => (
+          <Button
+            variant="primary"
+            className="mx-4 mb-2"
+            isDisabled={
+              isSubmitting ||
+              (currentStep === 1 && values.useCase === null) ||
+              (currentStep === 2 && values.departments.length === 0)
+            }
+            onPress={handleContinue}
+          >
+            Continue
+          </Button>
+        )}
+      </form.Subscribe>
     </StyledSafeAreaView>
   );
 }
