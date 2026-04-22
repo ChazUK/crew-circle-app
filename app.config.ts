@@ -18,7 +18,10 @@ export default {
       usesAppleSignIn: true,
     },
     android: {
-      icon: "./src/assets/icons/adaptive-icon.png",
+      adaptiveIcon: {
+        foregroundImage: "./src/assets/icons/adaptive-icon.png",
+        backgroundColor: "#FFFFFF",
+      },
       predictiveBackGestureEnabled: false,
       package: "com.crewcircle.crewcircle",
     },
