@@ -1,6 +1,5 @@
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import type { Meta, StoryObj } from "@storybook/react-native";
-import { useState } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 

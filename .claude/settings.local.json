@@ -5,6 +5,7 @@
       "Bash(gh issue:*)",
       "Bash(npx vitest:*)",
       "Bash(npx tsc:*)",
+      "Bash(npx expo *)",
       "WebFetch(domain:api.anthropic.com)"
     ]
   },

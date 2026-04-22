@@ -54,10 +54,13 @@ describe("handleClerkWebhook", () => {
     ctx = { runMutation: vi.fn() };
     mockVerifyWebhook.mockReset();
     vi.stubEnv("CLERK_WEBHOOK_SECRET", "whsec_test");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   describe("error cases", () => {
@@ -71,6 +74,7 @@ describe("handleClerkWebhook", () => {
       mockVerifyWebhook.mockRejectedValue(new Error("Invalid signature"));
       const response = await handler(ctx, makeRequest("{}"));
       expect(response.status).toBe(400);
+      expect(console.error).toHaveBeenCalledWith("Webhook verification failed:", expect.any(Error));
     });
 
     test("returns 500 when mutation throws", async () => {
@@ -81,6 +85,7 @@ describe("handleClerkWebhook", () => {
         makeRequest(JSON.stringify({ type: "user.created", data: userPayload })),
       );
       expect(response.status).toBe(500);
+      expect(console.error).toHaveBeenCalledWith("Webhook processing failed:", expect.any(Error));
     });
   });
 

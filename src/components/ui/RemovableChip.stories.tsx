@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-native";
-import { useState } from "react";
 import { View } from "react-native";
 
 import { RemovableChip } from "./RemovableChip";
