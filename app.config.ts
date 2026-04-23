@@ -1,3 +1,9 @@
+// Google OAuth on iOS redirects back to the app using a URL scheme that is the
+// reverse-DNS form of the iOS client id (e.g. com.googleusercontent.apps.xxxxx).
+// The scheme must be declared in Info.plist so the system routes the callback
+// to us; register it via CFBundleURLTypes below when the env var is set.
+const googleIosUrlScheme = process.env.EXPO_PUBLIC_CLERK_GOOGLE_IOS_URL_SCHEME;
+
 export default {
   expo: {
     name: "crew-circle-app",
@@ -22,6 +28,9 @@ export default {
         NSCameraUsageDescription: "CrewCircle needs access to your camera to take a profile photo.",
         NSCalendarsUsageDescription:
           "CrewCircle needs access to your calendar to view when you're busy and add events to your schedule.",
+        ...(googleIosUrlScheme
+          ? { CFBundleURLTypes: [{ CFBundleURLSchemes: [googleIosUrlScheme] }] }
+          : {}),
       },
     },
     android: {
