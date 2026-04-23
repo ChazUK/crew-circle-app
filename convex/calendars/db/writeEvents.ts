@@ -50,7 +50,14 @@ export async function replaceConnectionEvents(
     if (prior) {
       await ctx.db.replace(prior._id, payload);
     } else {
-      await ctx.db.insert("calendarEvents", payload);
+      // Track newly-inserted rows in the map so a duplicate externalId later
+      // in the same batch is replaced rather than inserted a second time.
+      const newId = await ctx.db.insert("calendarEvents", payload);
+      existingByExternal.set(event.externalId, {
+        _id: newId,
+        _creationTime: now,
+        ...payload,
+      });
     }
   }
 
