@@ -17,7 +17,7 @@ import {
   Spinner,
   TextField,
 } from "heroui-native";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform, Text, View } from "react-native";
 
 import {
@@ -70,10 +70,12 @@ const PROVIDER_META: Record<
   ical: { title: "iCal URL", Icon: LinkCalendarIcon },
 };
 
-function readEnv(key: string): string | undefined {
-  // Env vars that start with EXPO_PUBLIC_ are inlined at build time.
-  return (process.env as Record<string, string | undefined>)[key];
-}
+// Reuses Clerk's Google OAuth clients; must be literal property access so
+// babel-preset-expo can inline the values at build time. Dynamic keys
+// (`process.env[variable]`) are NOT inlined and would resolve to undefined.
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_CLERK_GOOGLE_IOS_CLIENT_ID;
+const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_CLERK_GOOGLE_ANDROID_CLIENT_ID;
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_CLERK_GOOGLE_WEB_CLIENT_ID;
 
 function formatLastSync(ts?: number): string | undefined {
   if (!ts) return undefined;
@@ -93,18 +95,16 @@ export function CalendarConnectionsSheet({ isOpen, onOpenChange }: Props) {
   const disconnect = useAction(api.calendars.actions.disconnect);
   const uploadAppleEvents = useAction(api.calendars.actions.uploadAppleEvents);
 
-  // Reuses the Google OAuth clients configured for Clerk sign-in; requesting the
-  // calendar scope here triggers a second consent only for the calendar permission.
-  const googleIosClientId = readEnv("EXPO_PUBLIC_CLERK_GOOGLE_IOS_CLIENT_ID");
-  const googleAndroidClientId = readEnv("EXPO_PUBLIC_CLERK_GOOGLE_ANDROID_CLIENT_ID");
-  const googleWebClientId = readEnv("EXPO_PUBLIC_CLERK_GOOGLE_WEB_CLIENT_ID");
-
   const [googleRequest, googleResponse, promptGoogle] = Google.useAuthRequest({
-    iosClientId: googleIosClientId,
-    androidClientId: googleAndroidClientId,
-    webClientId: googleWebClientId,
+    iosClientId: GOOGLE_IOS_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    webClientId: GOOGLE_WEB_CLIENT_ID,
     scopes: GOOGLE_SCOPES,
     responseType: "code",
+    // Don't let the hook exchange the code itself — the code is single-use
+    // and we need Convex (server-side) to do the exchange so it can encrypt
+    // and persist the refresh token.
+    shouldAutoExchangeCode: false,
   });
 
   const [adding, setAdding] = useState<AddProvider | null>(null);
@@ -114,6 +114,18 @@ export function CalendarConnectionsSheet({ isOpen, onOpenChange }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [appleCalendars, setAppleCalendars] = useState<Calendar.Calendar[]>([]);
   const [applePickerOpen, setApplePickerOpen] = useState(false);
+  // Authorization codes from Google are single-use. Track the last code we
+  // handled so a re-render or StrictMode double-invoke doesn't retry it.
+  const consumedGoogleCodeRef = useRef<string | null>(null);
+  // Snapshot of the PKCE verifier + redirect URI taken when we launched the
+  // auth flow. `googleRequest` can be regenerated across renders; reading from
+  // it in the response effect risks picking up a fresh verifier that doesn't
+  // match the challenge Google received.
+  const googleAuthSnapshotRef = useRef<{
+    codeVerifier: string;
+    redirectUri: string;
+    clientId: string;
+  } | null>(null);
 
   const resetAddState = useCallback(() => {
     setAdding(null);
@@ -137,56 +149,58 @@ export function CalendarConnectionsSheet({ isOpen, onOpenChange }: Props) {
   useEffect(() => {
     if (googleResponse?.type !== "success") return;
     const { code } = googleResponse.params;
-    const verifier = googleRequest?.codeVerifier;
-    const redirectUri = googleRequest?.redirectUri;
-    const resolvedClientId =
-      Platform.OS === "ios"
-        ? googleIosClientId
-        : Platform.OS === "android"
-          ? googleAndroidClientId
-          : googleWebClientId;
-    if (!code || !verifier || !redirectUri || !resolvedClientId) return;
+    const snapshot = googleAuthSnapshotRef.current;
+    if (!code || !snapshot) return;
+    if (consumedGoogleCodeRef.current === code) return;
+    consumedGoogleCodeRef.current = code;
 
     setBusy("google");
     setError(null);
     connectGoogleAction({
       code,
-      codeVerifier: verifier,
-      clientId: resolvedClientId,
-      redirectUri,
+      codeVerifier: snapshot.codeVerifier,
+      clientId: snapshot.clientId,
+      redirectUri: snapshot.redirectUri,
     })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => {
+        const detail = `${err.message} — redirect_uri=${snapshot.redirectUri}`;
+        setError(detail);
+      })
       .finally(() => setBusy(null));
-  }, [
-    googleResponse,
-    googleRequest,
-    googleIosClientId,
-    googleAndroidClientId,
-    googleWebClientId,
-    connectGoogleAction,
-  ]);
+  }, [googleResponse, connectGoogleAction]);
 
   const handleConnectGoogle = useCallback(async () => {
     setError(null);
     const resolvedClientId =
       Platform.OS === "ios"
-        ? googleIosClientId
+        ? GOOGLE_IOS_CLIENT_ID
         : Platform.OS === "android"
-          ? googleAndroidClientId
-          : googleWebClientId;
+          ? GOOGLE_ANDROID_CLIENT_ID
+          : GOOGLE_WEB_CLIENT_ID;
     if (!resolvedClientId) {
       setError(
         "Google OAuth client IDs are missing. Set EXPO_PUBLIC_CLERK_GOOGLE_IOS_CLIENT_ID / _ANDROID_CLIENT_ID / _WEB_CLIENT_ID in your env.",
       );
       return;
     }
-    if (!googleRequest) return;
+    if (!googleRequest?.codeVerifier || !googleRequest.redirectUri) {
+      setError("Google OAuth request not ready yet — try again in a moment.");
+      return;
+    }
+    // Snapshot the verifier + redirect URI NOW so the response handler uses
+    // values that match the challenge sent to Google, even if the hook later
+    // regenerates its internal request object.
+    googleAuthSnapshotRef.current = {
+      codeVerifier: googleRequest.codeVerifier,
+      redirectUri: googleRequest.redirectUri,
+      clientId: resolvedClientId,
+    };
     try {
       await promptGoogle();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to launch Google sign-in");
     }
-  }, [googleIosClientId, googleAndroidClientId, googleWebClientId, googleRequest, promptGoogle]);
+  }, [googleRequest, promptGoogle]);
 
   const handleConnectIcal = useCallback(async () => {
     const trimmed = icalUrl.trim();
@@ -362,7 +376,7 @@ export function CalendarConnectionsSheet({ isOpen, onOpenChange }: Props) {
 
   return (
     <BottomSheet isOpen={isOpen} onOpenChange={handleOpenChange}>
-      <BottomSheet.Portal>
+      <BottomSheet.Portal disableFullWindowOverlay>
         <BottomSheet.Overlay />
         <BottomSheet.Content snapPoints={["65%", "90%"]} keyboardBehavior="extend">
           <BottomSheetScrollView contentContainerStyle={{ paddingBottom: 16 }}>
