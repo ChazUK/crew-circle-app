@@ -47,6 +47,13 @@ export const listConnections = query({
   },
 });
 
+// Widen the startsAt lower bound so we pick up events that began before the
+// query window but still overlap it (multi-day holidays, week-long retreats,
+// long-running meetings). A one-year buffer covers every practical calendar
+// event; we then narrow back to genuine overlaps with an in-memory filter on
+// endsAt.
+const OVERLAP_LOOKBACK_MS = 365 * 24 * 60 * 60 * 1000;
+
 export const listEventsInRange = query({
   args: {
     startsAtMs: v.number(),
@@ -61,20 +68,25 @@ export const listEventsInRange = query({
     const events = await ctx.db
       .query("calendarEvents")
       .withIndex("byUserStartsAt", (q) =>
-        q.eq("userId", user._id).gte("startsAt", args.startsAtMs).lt("startsAt", args.endsAtMs),
+        q
+          .eq("userId", user._id)
+          .gte("startsAt", args.startsAtMs - OVERLAP_LOOKBACK_MS)
+          .lt("startsAt", args.endsAtMs),
       )
       .collect();
 
-    return events.map((event) => ({
-      _id: event._id,
-      connectionId: event.connectionId,
-      subCalendarId: event.subCalendarId,
-      title: event.title,
-      description: event.description,
-      location: event.location,
-      startsAt: event.startsAt,
-      endsAt: event.endsAt,
-      isAllDay: event.isAllDay,
-    }));
+    return events
+      .filter((event) => event.endsAt > args.startsAtMs)
+      .map((event) => ({
+        _id: event._id,
+        connectionId: event.connectionId,
+        subCalendarId: event.subCalendarId,
+        title: event.title,
+        description: event.description,
+        location: event.location,
+        startsAt: event.startsAt,
+        endsAt: event.endsAt,
+        isAllDay: event.isAllDay,
+      }));
   },
 });
