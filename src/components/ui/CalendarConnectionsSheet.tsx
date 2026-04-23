@@ -264,7 +264,8 @@ export function CalendarConnectionsSheet({ isOpen, onOpenChange }: Props) {
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Google connection failed";
-        setError(`${message} — redirect_uri=${snapshot.redirectUri}`);
+        console.warn("Google connect failed", { redirectUri: snapshot.redirectUri, err });
+        setError(message);
       } finally {
         setBusy(null);
       }
