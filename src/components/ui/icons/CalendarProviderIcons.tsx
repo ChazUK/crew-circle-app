@@ -1,3 +1,4 @@
+import { useId } from "react";
 import Svg, { G, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 
 type IconProps = {
@@ -96,6 +97,9 @@ export function AppleCalendarIcon({ size = 28 }: IconProps) {
 
 export function OutlookCalendarIcon({ size = 28 }: IconProps) {
   const s = size;
+  const uid = useId();
+  const gradient1 = `outlook-gradient-1-${uid}`;
+  const gradient2 = `outlook-gradient-2-${uid}`;
   return (
     <Svg width={s} height={s} viewBox="0 0 1831.085 1703.335">
       <Path
@@ -116,7 +120,7 @@ export function OutlookCalendarIcon({ size = 28 }: IconProps) {
       <Path fill="#14447D" d="M520.453,1025.151h416.38v346.969h-416.38V1025.151z" />
       <Path fill="#0078D4" d="M1362.667,1022h383.25v383.25h-383.25V1022z" />
       <LinearGradient
-        id="SVGID_1_"
+        id={gradient1}
         gradientUnits="userSpaceOnUse"
         x1="1128.4584"
         y1="811.0833"
@@ -128,7 +132,7 @@ export function OutlookCalendarIcon({ size = 28 }: IconProps) {
         <Stop offset="1" stopColor="#28A8EA" />
       </LinearGradient>
       <Path
-        fill="url(#SVGID_1_)"
+        fill={`url(#${gradient1})`}
         d="M1811.58,927.593l-0.809,0.426l-634.492,356.848c-2.768,1.703-5.578,3.321-8.517,4.769  c-10.777,5.132-22.481,8.029-34.407,8.517l-34.663-20.27c-2.929-1.47-5.773-3.105-8.517-4.897L447.167,906.003h-0.298  l-21.036-11.753v722.384c0.328,48.196,39.653,87.006,87.849,86.7h1230.914c0.724,0,1.363-0.341,2.129-0.341  c10.18-0.651,20.216-2.745,29.808-6.217c4.145-1.756,8.146-3.835,11.966-6.217c2.853-1.618,7.75-5.152,7.75-5.152  c21.814-16.142,34.726-41.635,34.833-68.772V894.25C1831.068,908.067,1823.616,920.807,1811.58,927.593z"
       />
       <Path
@@ -176,7 +180,7 @@ export function OutlookCalendarIcon({ size = 28 }: IconProps) {
         d="M936.833,461.305v823.136c-0.046,43.067-34.861,78.015-77.927,78.225H425.833  V383.25h433.072c43.062,0.023,77.951,34.951,77.927,78.013C936.833,461.277,936.833,461.291,936.833,461.305z"
       />
       <LinearGradient
-        id="SVGID_2_"
+        id={gradient2}
         gradientUnits="userSpaceOnUse"
         x1="162.7469"
         y1="1383.0741"
@@ -189,7 +193,7 @@ export function OutlookCalendarIcon({ size = 28 }: IconProps) {
         <Stop offset="1" stopColor="#0A63C9" />
       </LinearGradient>
       <Path
-        fill="url(#SVGID_2_)"
+        fill={`url(#${gradient2})`}
         d="M78.055,383.25h780.723c43.109,0,78.055,34.947,78.055,78.055v780.723  c0,43.109-34.946,78.055-78.055,78.055H78.055c-43.109,0-78.055-34.947-78.055-78.055V461.305  C0,418.197,34.947,383.25,78.055,383.25z"
       />
       <Path
