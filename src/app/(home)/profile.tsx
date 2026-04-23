@@ -9,8 +9,8 @@ export default function Profile() {
   return (
     <View className="flex-1 items-center justify-center gap-4">
       <Text className="text-2xl font-bold">Profile</Text>
-      <Text className="text-base text-default-500">{user?.emailAddresses[0].emailAddress}</Text>
-      <Button variant="flat" color="danger" onPress={() => signOut()}>
+      <Text className="text-base text-default-500">{user?.emailAddresses[0]?.emailAddress}</Text>
+      <Button variant="danger-soft" onPress={() => signOut()}>
         Sign out
       </Button>
     </View>
