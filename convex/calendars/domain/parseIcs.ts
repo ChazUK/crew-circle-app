@@ -23,6 +23,9 @@ export function parseIcs(raw: string): ParsedEvent[] {
         startIsAllDay?: boolean;
         endIsAllDay?: boolean;
         endExplicit?: boolean;
+        // TRANSP:TRANSPARENT marks the event as not blocking time; we drop
+        // these so birthdays / "free" feed entries don't appear as busy.
+        transparent?: boolean;
       })
     | null = null;
 
@@ -32,7 +35,13 @@ export function parseIcs(raw: string): ParsedEvent[] {
       continue;
     }
     if (line === "END:VEVENT") {
-      if (current && current.startsAt != null && current.externalId && current.title) {
+      if (
+        current &&
+        !current.transparent &&
+        current.startsAt != null &&
+        current.externalId &&
+        current.title
+      ) {
         if (current.endsAt == null) {
           // Default end = start + 1 hour (timed) or + 1 day (all-day), per RFC 5545 §3.6.1
           current.endsAt = current.startIsAllDay
@@ -90,6 +99,9 @@ export function parseIcs(raw: string): ParsedEvent[] {
         }
         break;
       }
+      case "TRANSP":
+        current.transparent = value.toUpperCase() === "TRANSPARENT";
+        break;
       default:
         break;
     }

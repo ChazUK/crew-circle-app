@@ -44,12 +44,15 @@ export function SubCalendarPickerSheet({
 
   // Seed the selection when the sheet opens (or when the list of calendars
   // changes while open, e.g. a re-fetch). Default behaviour = everything on.
+  // Defensively drop any ids that aren't in the current calendar set so a
+  // stale alias (e.g. Google's "primary") can't leak into the saved value.
   useEffect(() => {
     if (!isOpen) return;
+    const validIds = new Set(calendars.map((c) => c.id));
     const seed =
       initialSelection !== undefined
-        ? new Set(initialSelection)
-        : new Set(calendars.map((c) => c.id));
+        ? new Set(initialSelection.filter((id) => validIds.has(id)))
+        : new Set(validIds);
     setSelected(seed);
     setError(null);
   }, [isOpen, calendars, initialSelection]);

@@ -27,7 +27,7 @@ export default {
           "CrewCircle needs access to your photo library to upload a profile photo.",
         NSCameraUsageDescription: "CrewCircle needs access to your camera to take a profile photo.",
         NSCalendarsUsageDescription:
-          "CrewCircle needs access to your calendar to view when you're busy and add events to your schedule.",
+          "CrewCircle needs full calendar access to view when you're busy and add events to your schedule.",
         ...(googleIosUrlScheme
           ? { CFBundleURLTypes: [{ CFBundleURLSchemes: [googleIosUrlScheme] }] }
           : {}),

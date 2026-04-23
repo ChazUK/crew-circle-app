@@ -31,6 +31,11 @@ type GoogleEvent = {
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
   status?: string;
+  // "opaque" (default — blocks time as busy) or "transparent" (shows as free).
+  transparency?: "opaque" | "transparent";
+  // Newer classification; "birthday" specifically tags Contacts-imported
+  // birthdays even when stored in the primary calendar.
+  eventType?: string;
 };
 
 type EventsListResponse = {
@@ -123,6 +128,10 @@ async function fetchCalendarList(accessToken: string): Promise<GoogleCalendarLis
   do {
     const url = new URL(`${CALENDAR_BASE}/users/me/calendarList`);
     url.searchParams.set("maxResults", "250");
+    // Restrict to calendars the user owns — i.e. Google's "My Calendars"
+    // section. Skips subscribed holiday calendars, shared team calendars,
+    // and the read-only Birthdays system calendar.
+    url.searchParams.set("minAccessRole", "owner");
     if (pageToken) url.searchParams.set("pageToken", pageToken);
 
     const res = await fetch(url, {
@@ -166,6 +175,11 @@ async function fetchEventsForCalendar(
     const data = (await res.json()) as EventsListResponse;
     for (const item of data.items ?? []) {
       if (item.status === "cancelled") continue;
+      // Skip anything the user has explicitly marked as not blocking their
+      // time — "transparent" events (birthdays imported from contacts, "free"
+      // holidays, etc.) don't belong on a free/busy diary.
+      if (item.transparency === "transparent") continue;
+      if (item.eventType === "birthday") continue;
       const parsed = googleEventToIncoming(item, calendarId);
       if (parsed) events.push(parsed);
     }
@@ -258,7 +272,13 @@ export const connectGoogle = action({
     clientId: v.string(),
     redirectUri: v.string(),
   },
-  handler: async (ctx, args): Promise<Id<"calendarConnections">> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    connectionId: Id<"calendarConnections">;
+    enabledSubCalendarIds: string[];
+  }> => {
     const user = await ctx.runQuery(api.users.queries.getCurrentUser, {});
     if (!user) throw new Error("Not authenticated");
 
@@ -277,6 +297,14 @@ export const connectGoogle = action({
     };
     const encryptedTokens = encryptJson(tokensToStore);
 
+    // Resolve the "primary" alias to the concrete calendarList id (usually
+    // the user's email). Storing the real id keeps it consistent with what
+    // the picker later shows — otherwise the picker seed can't match and
+    // the user ends up with both the alias and the real id saved.
+    const calendarsList = await fetchCalendarList(token.access_token);
+    const primary = calendarsList.find((c) => c.primary);
+    const primaryId = primary?.id ?? "primary";
+
     const connectionId: Id<"calendarConnections"> = await ctx.runMutation(
       internal.calendars.mutations.insertConnection,
       {
@@ -288,12 +316,12 @@ export const connectGoogle = action({
         oauthClientId: args.clientId,
         encryptedTokens,
         tokenExpiresAt: Date.now() + token.expires_in * 1000,
-        enabledSubCalendarIds: ["primary"],
+        enabledSubCalendarIds: [primaryId],
       },
     );
 
     try {
-      const events = await fetchEventsForCalendars(token.access_token, ["primary"]);
+      const events = await fetchEventsForCalendars(token.access_token, [primaryId]);
       await ctx.runMutation(internal.calendars.mutations.replaceEvents, {
         connectionId,
         userId: user._id,
@@ -310,7 +338,7 @@ export const connectGoogle = action({
         error: message,
       });
     }
-    return connectionId;
+    return { connectionId, enabledSubCalendarIds: [primaryId] };
   },
 });
 

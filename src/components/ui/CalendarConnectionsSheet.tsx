@@ -247,19 +247,20 @@ export function CalendarConnectionsSheet({ isOpen, onOpenChange }: Props) {
       setBusy("google");
       setError(null);
       try {
-        const connectionId = await connectGoogleAction({
+        const { connectionId, enabledSubCalendarIds } = await connectGoogleAction({
           code,
           codeVerifier: snapshot.codeVerifier,
           clientId: snapshot.clientId,
           redirectUri: snapshot.redirectUri,
         });
         // After Google returns tokens, surface its sub-calendars so the user
-        // can pick which ones to actually sync. Defaults to "primary" (what
-        // connectGoogle enabled during its initial sync).
+        // can pick which ones to actually sync. connectGoogle resolves the
+        // "primary" alias to the real calendar id so initial selection is
+        // reflected correctly in the picker.
         await openManagePicker({
           connectionId,
           provider: "google",
-          currentIds: ["primary"],
+          currentIds: enabledSubCalendarIds,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Google connection failed";
