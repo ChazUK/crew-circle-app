@@ -13,6 +13,8 @@ import type * as calendars_actions from "../calendars/actions.js";
 import type * as calendars_db_getConnection from "../calendars/db/getConnection.js";
 import type * as calendars_db_writeEvents from "../calendars/db/writeEvents.js";
 import type * as calendars_domain_crypto from "../calendars/domain/crypto.js";
+import type * as calendars_domain_googleEvents from "../calendars/domain/googleEvents.js";
+import type * as calendars_domain_icalUrl from "../calendars/domain/icalUrl.js";
 import type * as calendars_domain_parseIcs from "../calendars/domain/parseIcs.js";
 import type * as calendars_google from "../calendars/google.js";
 import type * as calendars_mutations from "../calendars/mutations.js";
@@ -42,6 +44,8 @@ declare const fullApi: ApiFromModules<{
   "calendars/db/getConnection": typeof calendars_db_getConnection;
   "calendars/db/writeEvents": typeof calendars_db_writeEvents;
   "calendars/domain/crypto": typeof calendars_domain_crypto;
+  "calendars/domain/googleEvents": typeof calendars_domain_googleEvents;
+  "calendars/domain/icalUrl": typeof calendars_domain_icalUrl;
   "calendars/domain/parseIcs": typeof calendars_domain_parseIcs;
   "calendars/google": typeof calendars_google;
   "calendars/mutations": typeof calendars_mutations;

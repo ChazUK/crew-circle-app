@@ -7,6 +7,11 @@ import { Doc, Id } from "../_generated/dataModel";
 import { ActionCtx, action, internalAction } from "../_generated/server";
 import type { IncomingEvent } from "./db/writeEvents";
 import { decryptJson, encryptJson, type EncryptedOAuthTokens } from "./domain/crypto";
+import {
+  type GoogleEvent,
+  googleEventToIncoming,
+  shouldSkipGoogleEvent,
+} from "./domain/googleEvents";
 
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const USERINFO_ENDPOINT = "https://openidconnect.googleapis.com/v1/userinfo";
@@ -21,21 +26,6 @@ type TokenResponse = {
   refresh_token?: string;
   scope?: string;
   token_type?: string;
-};
-
-type GoogleEvent = {
-  id: string;
-  summary?: string;
-  description?: string;
-  location?: string;
-  start?: { dateTime?: string; date?: string };
-  end?: { dateTime?: string; date?: string };
-  status?: string;
-  // "opaque" (default — blocks time as busy) or "transparent" (shows as free).
-  transparency?: "opaque" | "transparent";
-  // Newer classification; "birthday" specifically tags Contacts-imported
-  // birthdays even when stored in the primary calendar.
-  eventType?: string;
 };
 
 type EventsListResponse = {
@@ -174,12 +164,7 @@ async function fetchEventsForCalendar(
     }
     const data = (await res.json()) as EventsListResponse;
     for (const item of data.items ?? []) {
-      if (item.status === "cancelled") continue;
-      // Skip anything the user has explicitly marked as not blocking their
-      // time — "transparent" events (birthdays imported from contacts, "free"
-      // holidays, etc.) don't belong on a free/busy diary.
-      if (item.transparency === "transparent") continue;
-      if (item.eventType === "birthday") continue;
+      if (shouldSkipGoogleEvent(item)) continue;
       const parsed = googleEventToIncoming(item, calendarId);
       if (parsed) events.push(parsed);
     }
@@ -196,38 +181,6 @@ async function fetchEventsForCalendars(
     calendarIds.map((id) => fetchEventsForCalendar(accessToken, id)),
   );
   return results.flat();
-}
-
-function googleEventToIncoming(event: GoogleEvent, subCalendarId: string): IncomingEvent | null {
-  const startsAt = parseGoogleDate(event.start);
-  const endsAt = parseGoogleDate(event.end);
-  if (startsAt == null) return null;
-  const isAllDay = Boolean(event.start?.date && !event.start?.dateTime);
-  const resolvedEnd = endsAt ?? startsAt + (isAllDay ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000);
-  return {
-    externalId: `${subCalendarId}::${event.id}`,
-    subCalendarId,
-    title: event.summary ?? "(No title)",
-    description: event.description,
-    location: event.location,
-    startsAt,
-    endsAt: resolvedEnd,
-    isAllDay,
-  };
-}
-
-function parseGoogleDate(field?: { dateTime?: string; date?: string }): number | null {
-  if (!field) return null;
-  if (field.dateTime) {
-    const ms = Date.parse(field.dateTime);
-    return Number.isFinite(ms) ? ms : null;
-  }
-  if (field.date) {
-    const [y, m, d] = field.date.split("-").map(Number);
-    if (!y || !m || !d) return null;
-    return Date.UTC(y, m - 1, d);
-  }
-  return null;
 }
 
 async function ensureAccessToken(
