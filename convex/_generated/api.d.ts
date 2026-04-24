@@ -10,6 +10,7 @@
 
 import type * as calendars_actionHelpers from "../calendars/actionHelpers.js";
 import type * as calendars_actions from "../calendars/actions.js";
+import type * as calendars_db_cascadeDelete from "../calendars/db/cascadeDelete.js";
 import type * as calendars_db_getConnection from "../calendars/db/getConnection.js";
 import type * as calendars_db_writeEvents from "../calendars/db/writeEvents.js";
 import type * as calendars_domain_crypto from "../calendars/domain/crypto.js";
@@ -41,6 +42,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "calendars/actionHelpers": typeof calendars_actionHelpers;
   "calendars/actions": typeof calendars_actions;
+  "calendars/db/cascadeDelete": typeof calendars_db_cascadeDelete;
   "calendars/db/getConnection": typeof calendars_db_getConnection;
   "calendars/db/writeEvents": typeof calendars_db_writeEvents;
   "calendars/domain/crypto": typeof calendars_domain_crypto;
