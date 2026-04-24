@@ -142,6 +142,89 @@ describe("connectIcal", () => {
     expect(connections).toHaveLength(1);
     expect(connections[0].lastSyncError).toMatch(/404/);
   });
+
+  test("refuses to follow a redirect to a private network", async () => {
+    const t = convexTest(schema, modules);
+    await seedUser(t);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response("", {
+          status: 302,
+          headers: { Location: "http://169.254.169.254/latest/meta-data/" },
+        });
+      }),
+    );
+    await expect(
+      t
+        .withIdentity(identity)
+        .action(api.calendars.actions.connectIcal, { url: "https://example.com/feed.ics" }),
+    ).rejects.toThrow(/private or reserved/);
+  });
+
+  test("refuses to follow a redirect to an IPv4-mapped loopback", async () => {
+    const t = convexTest(schema, modules);
+    await seedUser(t);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response("", {
+          status: 301,
+          headers: { Location: "http://[::ffff:127.0.0.1]/feed.ics" },
+        });
+      }),
+    );
+    await expect(
+      t
+        .withIdentity(identity)
+        .action(api.calendars.actions.connectIcal, { url: "https://example.com/feed.ics" }),
+    ).rejects.toThrow(/private or reserved/);
+  });
+
+  test("follows a safe redirect chain and fetches the final response", async () => {
+    const t = convexTest(schema, modules);
+    await seedUser(t);
+    const fetchFn = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "https://example.com/feed.ics") {
+        return new Response("", {
+          status: 302,
+          headers: { Location: "https://cdn.example.com/feed.ics" },
+        });
+      }
+      return new Response(minimalIcs, {
+        status: 200,
+        headers: { "Content-Type": "text/calendar" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchFn);
+    const connectionId = await t
+      .withIdentity(identity)
+      .action(api.calendars.actions.connectIcal, { url: "https://example.com/feed.ics" });
+    const events = await readEvents(t, connectionId);
+    expect(events.map((e) => e.externalId)).toEqual(["sample-1"]);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  test("rejects a redirect loop past the hop limit", async () => {
+    const t = convexTest(schema, modules);
+    await seedUser(t);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === "string" ? input : input.toString();
+        // Resolve to a new URL each hop so we exceed the hop budget rather
+        // than triggering a different check.
+        const next = url.endsWith(".ics") ? `${url.replace(/\.ics$/, "")}-1.ics` : `${url}-1.ics`;
+        return new Response("", { status: 302, headers: { Location: next } });
+      }),
+    );
+    await expect(
+      t
+        .withIdentity(identity)
+        .action(api.calendars.actions.connectIcal, { url: "https://example.com/feed.ics" }),
+    ).rejects.toThrow(/exceeded .* redirects/);
+  });
 });
 
 describe("connectApple", () => {

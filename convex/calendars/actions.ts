@@ -23,12 +23,34 @@ async function requireUser(ctx: ActionCtx): Promise<Doc<"users">> {
   return user;
 }
 
+const MAX_ICAL_REDIRECTS = 5;
+
+// Walk redirects manually so we can re-run the SSRF hostname check on every
+// Location header. With `redirect: "follow"` the browser would happily send us
+// to `169.254.169.254` or `[::ffff:127.0.0.1]` if the feed owner configures
+// a 30x, bypassing the check that only looked at the initial URL.
+async function fetchIcalWithSafeRedirects(initialUrl: string): Promise<Response> {
+  let url = assertSafeIcalUrl(initialUrl);
+  for (let hop = 0; hop <= MAX_ICAL_REDIRECTS; hop++) {
+    const res = await fetch(url, { redirect: "manual" });
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (!location) throw new Error(`iCal redirect ${res.status} with no Location header`);
+      // Resolve relative Location against the previous URL, then re-validate.
+      const resolved = new URL(location, url).toString();
+      url = assertSafeIcalUrl(resolved);
+      continue;
+    }
+    return res;
+  }
+  throw new Error(`iCal feed exceeded ${MAX_ICAL_REDIRECTS} redirects`);
+}
+
 async function fetchAndStoreIcal(
   ctx: ActionCtx,
   args: { connectionId: Id<"calendarConnections">; userId: Id<"users">; url: string },
 ) {
-  const safeUrl = assertSafeIcalUrl(args.url);
-  const res = await fetch(safeUrl, { redirect: "follow" });
+  const res = await fetchIcalWithSafeRedirects(args.url);
   if (!res.ok) throw new Error(`Failed to fetch iCal feed (status ${res.status})`);
   const body = await res.text();
   const events = parseIcs(body);
