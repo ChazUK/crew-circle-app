@@ -226,6 +226,70 @@ describe("parseIcs", () => {
     expect(parseIcs(ics)).toEqual([]);
   });
 
+  test("unquotes TZID values wrapped in double quotes", () => {
+    const ics = buildIcs(
+      [
+        "BEGIN:VEVENT",
+        "UID:tzid-quoted",
+        "SUMMARY:Quoted TZ",
+        'DTSTART;TZID="America/New_York":20260501T090000',
+        "END:VEVENT",
+      ].join("\r\n"),
+    );
+    const [event] = parseIcs(ics);
+    expect(event.startsAt).toBe(Date.UTC(2026, 4, 1, 13, 0, 0));
+  });
+
+  test("strips leading slash on TZID (Outlook-style)", () => {
+    const ics = buildIcs(
+      [
+        "BEGIN:VEVENT",
+        "UID:tzid-slash",
+        "SUMMARY:Outlook style",
+        "DTSTART;TZID=/America/New_York:20260501T090000",
+        "END:VEVENT",
+      ].join("\r\n"),
+    );
+    const [event] = parseIcs(ics);
+    expect(event.startsAt).toBe(Date.UTC(2026, 4, 1, 13, 0, 0));
+  });
+
+  test("resolves wall-clock times on the DST spring-forward day correctly", () => {
+    // 2026-03-08 02:00 in America/New_York does not exist (clocks jump from
+    // 01:59 EST to 03:00 EDT). 03:30 EDT is 07:30 UTC.
+    const ics = buildIcs(
+      [
+        "BEGIN:VEVENT",
+        "UID:spring-forward",
+        "SUMMARY:Spring forward meeting",
+        "DTSTART;TZID=America/New_York:20260308T033000",
+        "DTEND;TZID=America/New_York:20260308T043000",
+        "END:VEVENT",
+      ].join("\r\n"),
+    );
+    const [event] = parseIcs(ics);
+    expect(event.startsAt).toBe(Date.UTC(2026, 2, 8, 7, 30, 0));
+    expect(event.endsAt).toBe(Date.UTC(2026, 2, 8, 8, 30, 0));
+  });
+
+  test("resolves wall-clock times on the DST fall-back day correctly", () => {
+    // 2026-11-01 clocks fall back from 02:00 EDT to 01:00 EST. 01:30 is
+    // ambiguous; our implementation should still converge to a stable UTC
+    // result (either pre- or post-transition). 10:00 AM = 15:00 UTC under EST
+    // (UTC-5), which is the "after-transition" offset.
+    const ics = buildIcs(
+      [
+        "BEGIN:VEVENT",
+        "UID:fall-back",
+        "SUMMARY:Fall back meeting",
+        "DTSTART;TZID=America/New_York:20261101T100000",
+        "END:VEVENT",
+      ].join("\r\n"),
+    );
+    const [event] = parseIcs(ics);
+    expect(event.startsAt).toBe(Date.UTC(2026, 10, 1, 15, 0, 0));
+  });
+
   test("handles multiple VEVENTs in a single feed", () => {
     const ics = buildIcs(
       vevent({

@@ -80,7 +80,14 @@ export function parseIcs(raw: string): ParsedEvent[] {
       const eq = parts[i].indexOf("=");
       if (eq < 0) continue;
       const k = parts[i].slice(0, eq).toUpperCase();
-      const v = parts[i].slice(eq + 1);
+      // RFC 5545 §3.1.1 permits DQUOTE around param values, and some
+      // producers (Outlook exports, Microsoft ICS, etc.) prefix TZIDs with
+      // a leading `/`. Strip both so lookups into the IANA database match.
+      let v = parts[i].slice(eq + 1);
+      if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) {
+        v = v.slice(1, -1);
+      }
+      if (v.startsWith("/")) v = v.slice(1);
       params.set(k, v);
     }
 
@@ -180,7 +187,7 @@ function fromWallClockInZone(
   second: number,
   timeZone: string,
 ): number | null {
-  const guess = Date.UTC(year, month - 1, day, hour, minute, second);
+  const targetWallMs = Date.UTC(year, month - 1, day, hour, minute, second);
   let dtf: Intl.DateTimeFormat;
   try {
     dtf = new Intl.DateTimeFormat("en-US", {
@@ -196,7 +203,28 @@ function fromWallClockInZone(
   } catch {
     return null;
   }
-  const parts = dtf.formatToParts(new Date(guess));
+
+  // Near DST transitions a single offset lookup is wrong by up to an hour:
+  // querying the zone at our initial UTC guess returns the *old* offset, but
+  // the refined instant might sit on the other side of the transition. Iterate
+  // until the offset converges on itself (or we've bounced enough times that
+  // we're in an ambiguous / non-existent wall-clock window, in which case the
+  // last value is a stable fixed point).
+  let utc = targetWallMs;
+  for (let i = 0; i < 4; i++) {
+    const wallMs = zoneWallClockAsUtc(dtf, utc);
+    const offset = wallMs - utc;
+    const next = targetWallMs - offset;
+    if (next === utc) return next;
+    utc = next;
+  }
+  return utc;
+}
+
+// Given a Date-time format bound to an IANA zone and a UTC instant, return the
+// wall-clock time at that instant in the zone, serialized back into UTC ms.
+function zoneWallClockAsUtc(dtf: Intl.DateTimeFormat, utcMs: number): number {
+  const parts = dtf.formatToParts(new Date(utcMs));
   let y = 0;
   let mo = 0;
   let d = 0;
@@ -226,7 +254,5 @@ function fromWallClockInZone(
         break;
     }
   }
-  const wallAsUtc = Date.UTC(y, mo - 1, d, h, mi, s);
-  const offset = wallAsUtc - guess;
-  return guess - offset;
+  return Date.UTC(y, mo - 1, d, h, mi, s);
 }
