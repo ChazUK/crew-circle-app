@@ -1,8 +1,10 @@
+// @vitest-environment node
 import { convexTest, type TestConvex } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { internal } from "../_generated/api";
 import schema from "../schema";
+import { encryptJson } from "./domain/crypto";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -57,12 +59,37 @@ describe("syncAllConnections", () => {
 
   test("kicks off per-provider syncs for Google and iCal and skips Apple/Outlook", async () => {
     vi.stubEnv("CALENDAR_ENCRYPTION_KEY", TEST_KEY);
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response("BEGIN:VCALENDAR\r\nEND:VCALENDAR", { status: 200 })),
-    );
+
+    // Route responses by URL so Google API calls get JSON and iCal fetches
+    // get iCalendar text. Without this split, one or the other would fail.
+    const fetchFn = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("googleapis.com")) {
+        // Google events.list — one event, already in the enabled sub-calendar.
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: "g-1",
+                summary: "From Google",
+                start: { dateTime: "2026-05-01T09:00:00Z" },
+                end: { dateTime: "2026-05-01T10:00:00Z" },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response("BEGIN:VCALENDAR\r\nEND:VCALENDAR", {
+        status: 200,
+        headers: { "Content-Type": "text/calendar" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchFn);
+
     const t = convexTest(schema, modules);
     const userId = await insertUser(t, "all");
+    const tokens = encryptJson({ accessToken: "a", refreshToken: "r" });
 
     await t.run(async (ctx) => {
       await ctx.db.insert("calendarConnections", {
@@ -70,6 +97,16 @@ describe("syncAllConnections", () => {
         provider: "ical",
         label: "Web",
         icalUrl: "https://example.com/feed.ics",
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("calendarConnections", {
+        userId,
+        provider: "google",
+        label: "Google",
+        oauthClientId: "client-id",
+        encryptedTokens: tokens,
+        tokenExpiresAt: Date.now() + 60 * 60 * 1000,
+        enabledSubCalendarIds: ["me@google.test"],
         createdAt: Date.now(),
       });
       await ctx.db.insert("calendarConnections", {
@@ -92,9 +129,18 @@ describe("syncAllConnections", () => {
 
     const connections = await t.run((ctx) => ctx.db.query("calendarConnections").collect());
     const byProvider = Object.fromEntries(connections.map((c) => [c.provider, c]));
-    // Only the iCal connection got a sync touch.
     expect(byProvider.ical.lastSyncedAt).toBeTruthy();
+    expect(byProvider.google.lastSyncedAt).toBeTruthy();
     expect(byProvider.apple.lastSyncedAt).toBeUndefined();
     expect(byProvider.outlook.lastSyncedAt).toBeUndefined();
+
+    // The Google sync actually pulled the stubbed event into the cache.
+    const googleEvents = await t.run((ctx) =>
+      ctx.db
+        .query("calendarEvents")
+        .withIndex("byConnection", (q) => q.eq("connectionId", byProvider.google._id))
+        .collect(),
+    );
+    expect(googleEvents.map((e) => e.externalId)).toEqual(["me@google.test::g-1"]);
   });
 });
