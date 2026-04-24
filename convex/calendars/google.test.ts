@@ -163,6 +163,53 @@ describe("connectGoogle", () => {
     expect(connection.lastSyncError).toMatch(/Google events fetch failed/);
   });
 
+  test("still connects when calendarList is temporarily unavailable (falls back to 'primary')", async () => {
+    const t = convexTest(schema, modules);
+    await seedUser(t);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    stubFetches([
+      // Token exchange
+      () => json({ access_token: "a", refresh_token: "r", expires_in: 3600 }),
+      // Userinfo
+      () => json({ sub: "google_abc", email: "me@google.test" }),
+      // calendarList fails
+      () => json({ error: "backend down" }, 503),
+      // events.list for the "primary" alias
+      () =>
+        json({
+          items: [
+            {
+              id: "evt-1",
+              summary: "Fallback",
+              start: { dateTime: "2026-05-01T09:00:00Z" },
+              end: { dateTime: "2026-05-01T09:30:00Z" },
+            },
+          ],
+        }),
+    ]);
+
+    const result = await t.withIdentity(identity).action(api.calendars.google.connectGoogle, {
+      code: "c",
+      codeVerifier: "v",
+      clientId: "client-id",
+      redirectUri: "https://example.com/cb",
+    });
+
+    expect(result.enabledSubCalendarIds).toEqual(["primary"]);
+    const events = await t.run((ctx) =>
+      ctx.db
+        .query("calendarEvents")
+        .withIndex("byConnection", (q) => q.eq("connectionId", result.connectionId))
+        .collect(),
+    );
+    expect(events.map((e) => e.externalId)).toEqual(["primary::evt-1"]);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("calendarList lookup failed"),
+      expect.anything(),
+    );
+    warnSpy.mockRestore();
+  });
+
   test("surfaces Google token-exchange failures", async () => {
     const t = convexTest(schema, modules);
     await seedUser(t);

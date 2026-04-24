@@ -254,9 +254,21 @@ export const connectGoogle = action({
     // the user's email). Storing the real id keeps it consistent with what
     // the picker later shows — otherwise the picker seed can't match and
     // the user ends up with both the alias and the real id saved.
-    const calendarsList = await fetchCalendarList(token.access_token);
-    const primary = calendarsList.find((c) => c.primary);
-    const primaryId = primary?.id ?? "primary";
+    //
+    // This lookup is best-effort: the Google events.list endpoint accepts the
+    // "primary" alias directly, so if the calendarList endpoint is flaking we
+    // can still connect the account and let the picker resolve the real id
+    // on the next open.
+    let primaryId = "primary";
+    try {
+      const calendarsList = await fetchCalendarList(token.access_token);
+      primaryId = calendarsList.find((c) => c.primary)?.id ?? "primary";
+    } catch (err) {
+      console.warn(
+        "Google calendarList lookup failed during connect; falling back to 'primary'",
+        err,
+      );
+    }
 
     const connectionId: Id<"calendarConnections"> = await ctx.runMutation(
       internal.calendars.mutations.insertConnection,
