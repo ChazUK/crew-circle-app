@@ -259,6 +259,8 @@ export function CalendarConnectionsSheet({ isOpen, onOpenChange, _initialSyncWar
         });
         if (syncError != null) {
           setSyncWarning("Calendar connected but initial sync failed. It will retry shortly.");
+        } else {
+          setSyncWarning(null);
         }
         // After Google returns tokens, surface its sub-calendars so the user
         // can pick which ones to actually sync. connectGoogle resolves the
