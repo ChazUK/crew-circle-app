@@ -7,7 +7,7 @@ import { useMutation, useQuery } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { HeroUINativeProvider } from "heroui-native";
+import { HeroUINativeConfig, HeroUINativeProvider } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
@@ -19,12 +19,18 @@ if (!convexUrl) throw new Error("Add your Convex URL to the .env file");
 
 const convex = new ConvexReactClient(convexUrl);
 
+const config: HeroUINativeConfig = {
+  devInfo: {
+    stylingPrinciples: false,
+  },
+};
+
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <HeroUINativeProvider>
+      <HeroUINativeProvider config={config}>
         <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
           <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
             <RootNavigator />
