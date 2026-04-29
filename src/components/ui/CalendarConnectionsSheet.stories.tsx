@@ -9,14 +9,19 @@ import { CalendarConnectionsSheet } from "./CalendarConnectionsSheet";
 
 type StoryArgs = {
   startOpen: boolean;
+  initialSyncWarning?: string;
 };
 
-function Harness({ startOpen }: StoryArgs) {
+function Harness({ startOpen, initialSyncWarning }: StoryArgs) {
   const [isOpen, setIsOpen] = useState(startOpen);
   return (
     <View style={{ flex: 1, padding: 16, gap: 16 }}>
       <Button onPress={() => setIsOpen(true)}>Open calendar connections</Button>
-      <CalendarConnectionsSheet isOpen={isOpen} onOpenChange={setIsOpen} />
+      <CalendarConnectionsSheet
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        _initialSyncWarning={initialSyncWarning}
+      />
     </View>
   );
 }
@@ -47,4 +52,11 @@ export const Closed: Story = {};
 
 export const InitiallyOpen: Story = {
   args: { startOpen: true },
+};
+
+export const WithSyncWarning: Story = {
+  args: {
+    startOpen: true,
+    initialSyncWarning: "Calendar connected but initial sync failed. It will retry shortly.",
+  },
 };
