@@ -103,6 +103,15 @@ describe("assertSafeIcalUrl", () => {
     expect(() => assertSafeIcalUrl(url)).toThrow(/private or reserved/);
   });
 
+  test("rejects IPv6 link-local address with zone ID bypass attempt", () => {
+    // fe80::1%25eth0 — zone ID is stripped before range checks so the bare
+    // fe80:: address is identified as private/link-local. If the runtime URL
+    // parser already rejects zone ID literals, that also closes the SSRF door.
+    expect(() => assertSafeIcalUrl("http://[fe80::1%25eth0]/")).toThrow(
+      /private or reserved|Invalid iCal URL/,
+    );
+  });
+
   test("rejects a malformed IPv6 literal", () => {
     // WHATWG URL refuses to parse an illegal literal before our check sees it,
     // which is fine — either rejection closes the SSRF door.
