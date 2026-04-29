@@ -67,6 +67,8 @@ type AddProvider = "ical";
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Only used by Storybook to pre-seed the sync-warning banner. */
+  _initialSyncWarning?: string;
 };
 
 const PROVIDER_META: Record<
@@ -110,7 +112,7 @@ async function readAppleEvents(subCalendarIds: string[]): Promise<EventInput[]> 
   return events;
 }
 
-export function CalendarConnectionsSheet({ isOpen, onOpenChange }: Props) {
+export function CalendarConnectionsSheet({ isOpen, onOpenChange, _initialSyncWarning }: Props) {
   const connections = useQuery(api.calendars.queries.listConnections) ?? [];
   const connectIcal = useAction(api.calendars.actions.connectIcal);
   const connectApple = useAction(api.calendars.actions.connectApple);
@@ -135,6 +137,7 @@ export function CalendarConnectionsSheet({ isOpen, onOpenChange }: Props) {
   const [icalLabel, setIcalLabel] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [syncWarning, setSyncWarning] = useState<string | null>(_initialSyncWarning ?? null);
   const [appleDeviceCalendars, setAppleDeviceCalendars] = useState<Calendar.Calendar[]>([]);
   const [applePickerOpen, setApplePickerOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<Id<"calendarConnections"> | null>(null);
@@ -168,6 +171,7 @@ export function CalendarConnectionsSheet({ isOpen, onOpenChange }: Props) {
       if (!value) {
         resetAddState();
         setError(null);
+        setSyncWarning(null);
         setExpandedId(null);
       }
     },
@@ -247,12 +251,15 @@ export function CalendarConnectionsSheet({ isOpen, onOpenChange }: Props) {
       setBusy("google");
       setError(null);
       try {
-        const { connectionId, enabledSubCalendarIds } = await connectGoogleAction({
+        const { connectionId, enabledSubCalendarIds, syncError } = await connectGoogleAction({
           code,
           codeVerifier: snapshot.codeVerifier,
           clientId: snapshot.clientId,
           redirectUri: snapshot.redirectUri,
         });
+        if (syncError != null) {
+          setSyncWarning("Calendar connected but initial sync failed. It will retry shortly.");
+        }
         // After Google returns tokens, surface its sub-calendars so the user
         // can pick which ones to actually sync. connectGoogle resolves the
         // "primary" alias to the real calendar id so initial selection is
@@ -467,6 +474,12 @@ export function CalendarConnectionsSheet({ isOpen, onOpenChange }: Props) {
             {error != null && (
               <View className="mb-3 rounded-xl bg-danger/10 p-3">
                 <Text className="text-sm text-danger">{error}</Text>
+              </View>
+            )}
+
+            {syncWarning != null && (
+              <View className="mb-3 rounded-xl bg-warning/10 p-3">
+                <Text className="text-sm text-warning">{syncWarning}</Text>
               </View>
             )}
 

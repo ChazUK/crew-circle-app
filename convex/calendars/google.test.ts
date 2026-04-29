@@ -129,6 +129,7 @@ describe("connectGoogle", () => {
     });
 
     expect(result.enabledSubCalendarIds).toEqual(["me@google.test"]);
+    expect(result.syncError).toBeNull();
     const connection = (await t.run((ctx) =>
       ctx.db.get(result.connectionId),
     )) as Doc<"calendarConnections">;
@@ -164,6 +165,7 @@ describe("connectGoogle", () => {
       clientId: "client-id",
       redirectUri: "https://example.com/callback",
     });
+    expect(result.syncError).toMatch(/Google events fetch failed/);
     const connection = (await t.run((ctx) =>
       ctx.db.get(result.connectionId),
     )) as Doc<"calendarConnections">;

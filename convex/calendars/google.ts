@@ -251,6 +251,7 @@ export const connectGoogle = action({
   ): Promise<{
     connectionId: Id<"calendarConnections">;
     enabledSubCalendarIds: string[];
+    syncError: string | null;
   }> => {
     const user = await ctx.runQuery(api.users.queries.getCurrentUser, {});
     if (!user) throw new Error("Not authenticated");
@@ -305,6 +306,7 @@ export const connectGoogle = action({
       },
     );
 
+    let syncError: string | null = null;
     try {
       const events = await fetchEventsForCalendars(token.access_token, [primaryId]);
       await ctx.runMutation(internal.calendars.mutations.replaceEvents, {
@@ -317,13 +319,13 @@ export const connectGoogle = action({
         error: undefined,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown sync error";
+      syncError = err instanceof Error ? err.message : "Unknown sync error";
       await ctx.runMutation(internal.calendars.mutations.markSynced, {
         connectionId,
-        error: message,
+        error: syncError,
       });
     }
-    return { connectionId, enabledSubCalendarIds: [primaryId] };
+    return { connectionId, enabledSubCalendarIds: [primaryId], syncError };
   },
 });
 
