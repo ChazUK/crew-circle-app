@@ -26,7 +26,10 @@ export function assertSafeIcalUrl(raw: string): string {
   if (url.username || url.password) {
     throw new Error("iCal URL must not contain credentials");
   }
-  const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  const hostname = url.hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "") // strip IPv6 brackets
+    .replace(/%.*$/, ""); // strip zone ID (e.g. %25eth0) before range checks
   if (!hostname) throw new Error("iCal URL is missing a hostname");
   if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname === "broadcasthost") {
     throw new Error("iCal URL points at a local host");
