@@ -1,10 +1,24 @@
 import { v } from "convex/values";
+import { z } from "zod";
 
 import { mutation } from "../_generated/server";
-import { assertMaxLength } from "../lib/stringValidation";
+import { parseOrConvexError } from "../lib/parseOrConvexError";
 import { getUserByExternalId } from "./db/getUser";
 import { upsertCurrentUser } from "./domain/upsertCurrentUser";
-import { assertSafeProfileUrl } from "./domain/urlValidation";
+
+const httpUrl = z.url({ protocol: /^https?$/, hostname: z.regexes.domain });
+
+const completeOnboardingSchema = z.object({
+  firstName: z.string().max(100),
+  lastName: z.string().max(100),
+});
+
+const updateProfileSchema = z.object({
+  bio: z.string().max(1000).optional(),
+  website: httpUrl.optional(),
+  imdbUrl: httpUrl.optional(),
+  cvUrl: httpUrl.optional(),
+});
 
 export const upsertUser = mutation({
   args: {},
@@ -33,8 +47,7 @@ export const completeOnboarding = mutation({
     const user = await getUserByExternalId(ctx, identity.subject);
     if (!user) throw new Error("User not found");
 
-    assertMaxLength(args.firstName, "firstName", 100);
-    assertMaxLength(args.lastName, "lastName", 100);
+    parseOrConvexError(completeOnboardingSchema, args);
 
     await ctx.db.patch(user._id, {
       firstName: args.firstName,
@@ -62,10 +75,7 @@ export const updateProfile = mutation({
     const user = await getUserByExternalId(ctx, identity.subject);
     if (!user) throw new Error("User not found");
 
-    assertMaxLength(args.bio, "bio", 1000);
-    assertSafeProfileUrl(args.website, "website");
-    assertSafeProfileUrl(args.imdbUrl, "imdbUrl");
-    assertSafeProfileUrl(args.cvUrl, "cvUrl");
+    parseOrConvexError(updateProfileSchema, args);
 
     await ctx.db.patch(user._id, {
       ...(args.bio !== undefined && { bio: args.bio }),
