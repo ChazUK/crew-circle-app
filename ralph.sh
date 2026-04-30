@@ -86,11 +86,34 @@ agent_log() {
 # ─────────────────────────────────────────────────────────────
 AGENT_PIDS=()
 
-cleanup() {
-  info "Shutting down — releasing any in-flight claims..."
-  for pid in "${AGENT_PIDS[@]:-}"; do
-    kill "$pid" 2>/dev/null || true
+# Recursively kill an entire process tree (pid + all descendants).
+# Plain `kill $pid` only kills the shell wrapper, leaving claude and tee as orphans.
+kill_tree() {
+  local pid="$1"
+  local child
+  for child in $(pgrep -P "$pid" 2>/dev/null || true); do
+    kill_tree "$child"
   done
+  kill "$pid" 2>/dev/null || true
+}
+
+cleanup() {
+  # Disable the trap first so re-entrant signals during cleanup don't loop.
+  trap - EXIT INT TERM
+
+  info "Shutting down — killing agents and releasing in-flight claims..."
+
+  # Kill every agent and its entire descendant tree (shell → timeout → claude → tee).
+  for pid in "${AGENT_PIDS[@]:-}"; do
+    kill_tree "$pid"
+  done
+
+  # If running as the inner ralph inside a tmux session, kill the whole session so
+  # all watcher panes close automatically rather than leaving zombie tail -F processes.
+  if [[ -n "${TMUX:-}" ]]; then
+    tmux kill-session -t "ralph" 2>/dev/null || true
+  fi
+
   # Release ralph-in-progress label from any issues still actively being worked on.
   # Assignment to $ASSIGNEE stays as a permanent record so issues are never re-claimed.
   local claimed
@@ -102,9 +125,11 @@ cleanup() {
     warn "Releasing in-flight claim on issue #$num"
     gh issue edit "$num" --remove-label "$CLAIMED_LABEL" --repo "$REPO" 2>/dev/null || true
   done
+
   # Prune worktrees
   git -C "$SCRIPT_DIR" worktree prune 2>/dev/null || true
   rm -rf "$WORKTREES_DIR"
+
   # Remove persistent sandboxes now that all agents are done
   if [[ "$SANDBOX" == "1" ]]; then
     for i in $(seq 1 "$NUM_AGENTS"); do
@@ -348,6 +373,7 @@ build_prompt() {
   local issue_title="$2"
   local issue_body="$3"
   local branch="$4"
+  local worktree="$5"
 
   local prd_section=""
   if [[ -n "$PRD_NUMBER" ]]; then
@@ -378,8 +404,15 @@ ${prd_section}
 ## Repository
 - **GitHub repo:** ${REPO}
 - **Working branch:** \`${branch}\` (already checked out — do NOT switch branches)
+- **Worktree root:** \`${worktree}\` — this is your working directory and your filesystem boundary
 - **Stack:** React Native (Expo) + Convex backend, TypeScript strict mode
 - **Domain:** UK film/TV production crew short term hiring tool (see \`CONTEXT.md\`)
+
+> **IMPORTANT — filesystem boundary**: You are running inside an isolated git worktree at
+> \`${worktree}\`. You must ONLY read and write files inside this directory. Do NOT navigate
+> to, read, or modify anything outside it — especially not the parent repo at
+> \`$(dirname "$worktree")\` or any sibling worktrees. Doing so would corrupt another
+> agent's work or the main branch.
 
 ## Available Skills
 Use these /skills to list all available skills to help you with specific tasks (invoke with /skill-name):
@@ -589,6 +622,10 @@ agent_loop() {
   local iter=0
   local cumulative_log="$LOG_DIR/agent-${agent_id}.log"
 
+  # Exit immediately on SIGINT/TERM so a Ctrl+C doesn't get misread as a recoverable
+  # claude failure and cause the agent to loop to the next issue.
+  trap 'exit 130' INT TERM
+
   agent_log "$agent_id" "started (max $MAX_ITER issues)"
 
   while [[ $iter -lt $MAX_ITER ]]; do
@@ -664,9 +701,23 @@ agent_loop() {
       git -C "$SCRIPT_DIR" worktree add -b "$branch" "$worktree" main
     fi
 
+    # Write a Claude Code settings file into the worktree that hard-denies access to
+    # anything outside it. This is a machine-enforced guardrail on top of the prompt
+    # instruction — prevents the agent from reading/writing the main repo or sibling worktrees.
+    mkdir -p "$worktree/.claude"
+    cat > "$worktree/.claude/settings.local.json" <<JSON
+{
+  "permissions": {
+    "deny": ["Bash(cd:${SCRIPT_DIR}*)", "Write(${SCRIPT_DIR}/*)", "Edit(${SCRIPT_DIR}/*)"]
+  }
+}
+JSON
+    # Exclude the settings file from git so the agent never accidentally commits it
+    printf '.claude/settings.local.json\n' >> "$(git -C "$worktree" rev-parse --git-dir)/info/exclude"
+
     # ── Build the prompt ───────────────────────────────────────
     local prompt_file="$RALPH_DIR/prompt-agent${agent_id}-issue${issue_number}.txt"
-    build_prompt "$issue_number" "$issue_title" "$issue_body" "$branch" > "$prompt_file"
+    build_prompt "$issue_number" "$issue_title" "$issue_body" "$branch" "$worktree" > "$prompt_file"
 
     local log_file="$LOG_DIR/agent-${agent_id}-issue-${issue_number}.log"
     agent_log "$agent_id" "running claude on #$issue_number... (log: $log_file)"
