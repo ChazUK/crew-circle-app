@@ -2,8 +2,10 @@ import type {
   CalendarProvider,
   CalendarProviderCapabilities,
   IncomingEvent,
+  SubCalendar,
   SyncWindow,
   WriteError,
+  WriteSuccess,
 } from "@shared/calendars";
 
 export const microsoftCapabilities: CalendarProviderCapabilities = {
@@ -15,15 +17,23 @@ export const microsoftCapabilities: CalendarProviderCapabilities = {
 export const MicrosoftCalendarAdapter: CalendarProvider = {
   capabilities: microsoftCapabilities,
 
-  async fetchEvents(_window: SyncWindow): Promise<IncomingEvent[]> {
+  async fetchEvents(
+    _ctx: unknown,
+    _connection: unknown,
+    _window: SyncWindow,
+  ): Promise<IncomingEvent[]> {
     throw new Error("Not implemented: Microsoft Calendar is not yet supported");
   },
 
-  async writeEvent(_event: IncomingEvent): Promise<WriteError | null> {
+  async writeEvent(
+    _ctx: unknown,
+    _connection: unknown,
+    _event: IncomingEvent,
+  ): Promise<WriteSuccess | WriteError> {
     throw new Error("Not implemented: Microsoft Calendar is not yet supported");
   },
 
-  async listSubCalendars(): Promise<Array<{ id: string; label: string }>> {
+  async listSubCalendars(_ctx: unknown, _connection: unknown): Promise<SubCalendar[]> {
     throw new Error("Not implemented: Microsoft Calendar is not yet supported");
   },
 };

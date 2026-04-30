@@ -2,7 +2,10 @@ import type {
   CalendarProvider,
   CalendarProviderCapabilities,
   IncomingEvent,
+  SubCalendar,
   SyncWindow,
+  WriteError,
+  WriteSuccess,
 } from "@shared/calendars";
 
 export const icalCapabilities: CalendarProviderCapabilities = {
@@ -14,7 +17,23 @@ export const icalCapabilities: CalendarProviderCapabilities = {
 export const ICalAdapter: CalendarProvider = {
   capabilities: icalCapabilities,
 
-  async fetchEvents(_window: SyncWindow): Promise<IncomingEvent[]> {
+  async fetchEvents(
+    _ctx: unknown,
+    _connection: unknown,
+    _window: SyncWindow,
+  ): Promise<IncomingEvent[]> {
     throw new Error("Not implemented: ICalAdapter");
+  },
+
+  async writeEvent(
+    _ctx: unknown,
+    _connection: unknown,
+    _event: IncomingEvent,
+  ): Promise<WriteSuccess | WriteError> {
+    return { kind: "not_supported", message: "iCal feeds are read-only" };
+  },
+
+  async listSubCalendars(_ctx: unknown, _connection: unknown): Promise<SubCalendar[]> {
+    return [];
   },
 };
