@@ -2,7 +2,9 @@ import type {
   CalendarProvider,
   CalendarProviderCapabilities,
   IncomingEvent,
+  SubCalendar,
   WriteError,
+  WriteSuccess,
 } from "@shared/calendars";
 
 export const nativeCapabilities: CalendarProviderCapabilities = {
@@ -14,11 +16,15 @@ export const nativeCapabilities: CalendarProviderCapabilities = {
 export const NativeCalendarAdapter: CalendarProvider = {
   capabilities: nativeCapabilities,
 
-  async writeEvent(_event: IncomingEvent): Promise<WriteError | null> {
+  async writeEvent(
+    _ctx: unknown,
+    _connection: unknown,
+    _event: IncomingEvent,
+  ): Promise<WriteSuccess | WriteError> {
     throw new Error("Not implemented: NativeCalendarAdapter");
   },
 
-  async listSubCalendars(): Promise<Array<{ id: string; label: string }>> {
+  async listSubCalendars(_ctx: unknown, _connection: unknown): Promise<SubCalendar[]> {
     throw new Error("Not implemented: NativeCalendarAdapter");
   },
 };

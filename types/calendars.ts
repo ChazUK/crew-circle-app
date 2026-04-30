@@ -11,6 +11,13 @@ export type IncomingEvent = {
   isAllDay: boolean;
 };
 
+export type SubCalendar = {
+  id: string;
+  label: string;
+  primary: boolean;
+  hint?: string;
+};
+
 export type CalendarProviderCapabilities = {
   serverSidePullable: boolean;
   writable: boolean;
@@ -31,13 +38,20 @@ export type SyncError =
 export type WriteError =
   | { kind: "not_supported"; message: string }
   | { kind: "conflict"; message: string }
+  | { kind: "insufficient_scope"; message: string }
   | { kind: "unknown"; message: string };
 
-export interface CalendarProvider {
+export type WriteSuccess = { externalId: string };
+
+export interface CalendarProvider<TCtx = unknown, TConn = unknown> {
   capabilities: CalendarProviderCapabilities;
-  fetchEvents?(window: SyncWindow): Promise<IncomingEvent[]>;
-  writeEvent?(event: IncomingEvent): Promise<WriteError | null>;
-  listSubCalendars?(): Promise<Array<{ id: string; label: string }>>;
+  fetchEvents?(ctx: TCtx, connection: TConn, window: SyncWindow): Promise<IncomingEvent[]>;
+  writeEvent?(
+    ctx: TCtx,
+    connection: TConn,
+    event: IncomingEvent,
+  ): Promise<WriteSuccess | WriteError>;
+  listSubCalendars?(ctx: TCtx, connection: TConn): Promise<SubCalendar[]>;
 }
 
 export type AdapterRegistry = {
