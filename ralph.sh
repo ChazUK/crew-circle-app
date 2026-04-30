@@ -18,11 +18,12 @@
 #   git, jq
 #
 # Usage:
-#   ./ralph.sh                         # 3 agents, local mode
-#   RALPH_AGENTS=5 ./ralph.sh          # 5 parallel agents
+#   ./ralph.sh                         # 5 agents, local mode
+#   RALPH_AGENTS=3 ./ralph.sh          # 3 parallel agents
 #   RALPH_SANDBOX=1 ./ralph.sh         # Isolate each agent in a Docker sandbox microVM (recommended for AFK)
 #   RALPH_PRD_NUMBER=42 ./ralph.sh     # Point agents at a PRD issue for context
 #   RALPH_MAX_ITER=10 ./ralph.sh       # Cap at 10 issues per agent then stop
+#   RALPH_TIMEOUT=7200 ./ralph.sh      # Claude timeout in seconds per issue (default: 3600)
 
 set -euo pipefail
 
@@ -34,9 +35,12 @@ NUM_AGENTS="${RALPH_AGENTS:-5}"
 MAX_ITER="${RALPH_MAX_ITER:-20}"       # Max issues per agent before it self-terminates
 SANDBOX="${RALPH_SANDBOX:-0}"          # 1 = wrap each claude invocation in Docker
 PRD_NUMBER="${RALPH_PRD_NUMBER:-}"     # GitHub issue # that contains the PRD (optional)
+AGENT_TIMEOUT="${RALPH_TIMEOUT:-3600}" # Seconds before killing a hung claude process
 
 CLAIMED_LABEL="ralph-in-progress"
 BLOCKED_LABEL="blocked"
+READY_LABEL="ready-for-agent"
+HUMAN_LABEL="ready-for-human"
 PRD_LABEL="prd"
 ASSIGNEE="ChazUK"
 
@@ -132,13 +136,26 @@ ensure_labels() {
     --color "e4e669" \
     --description "Product Requirements Document — skipped by Ralph agents" \
     --repo "$REPO" 2>/dev/null || true
+  gh label create "$READY_LABEL" \
+    --color "0075ca" \
+    --description "Ready for a Ralph agent to pick up" \
+    --repo "$REPO" 2>/dev/null || true
+  gh label create "$HUMAN_LABEL" \
+    --color "e4e669" \
+    --description "Agent got stuck — needs human input" \
+    --repo "$REPO" 2>/dev/null || true
+  gh label create "$BLOCKED_LABEL" \
+    --color "d93f0b" \
+    --description "Waiting on dependencies to be merged first" \
+    --repo "$REPO" 2>/dev/null || true
 }
 
-# Returns JSON of the oldest open, unclaimed, unblocked, unassigned issue — or empty.
+# Returns JSON of the oldest open, ready-for-agent, unclaimed issue — or empty.
 find_next_issue() {
   gh issue list \
     --repo "$REPO" \
     --state open \
+    --label "$READY_LABEL" \
     --limit 200 \
     --json number,title,body,labels,assignees,createdAt \
     --jq "
@@ -146,7 +163,7 @@ find_next_issue() {
         .[] |
         select(
           (.labels | map(.name) |
-            (contains([\"$BLOCKED_LABEL\"]) or contains([\"$PRD_LABEL\"]))
+            (contains([\"$BLOCKED_LABEL\"]) or contains([\"$PRD_LABEL\"]) or contains([\"$CLAIMED_LABEL\"]))
           ) | not
         ) |
         select(
@@ -157,6 +174,58 @@ find_next_issue() {
       | first
       // empty
     " 2>/dev/null || true
+}
+
+# Parse "Blocked by #N" lines from an issue body and return the issue numbers.
+get_blocker_numbers() {
+  local body="$1"
+  echo "$body" | grep -oiE 'Blocked by #[0-9]+' | grep -oE '[0-9]+' || true
+}
+
+# Return 0 if every "Blocked by #N" issue in the body is CLOSED, 1 otherwise.
+all_blockers_resolved() {
+  local body="$1"
+  local blockers
+  blockers=$(get_blocker_numbers "$body")
+
+  [[ -z "$blockers" ]] && return 0
+
+  for num in $blockers; do
+    local state
+    state=$(gh issue view "$num" --repo "$REPO" --json state --jq '.state' 2>/dev/null || echo "OPEN")
+    if [[ "$state" != "CLOSED" ]]; then
+      return 1
+    fi
+  done
+  return 0
+}
+
+# Scan every open issue labelled "blocked" and re-label it "ready-for-agent"
+# if all its dependencies are now closed.
+unblock_resolved_issues() {
+  local blocked_issues
+  blocked_issues=$(gh issue list \
+    --repo "$REPO" \
+    --state open \
+    --label "$BLOCKED_LABEL" \
+    --limit 200 \
+    --json number,body 2>/dev/null || true)
+
+  [[ -z "$blocked_issues" || "$blocked_issues" == "[]" ]] && return
+
+  echo "$blocked_issues" | jq -c '.[]' | while read -r issue; do
+    local num body
+    num=$(echo "$issue" | jq -r '.number')
+    body=$(echo "$issue" | jq -r '.body // ""')
+
+    if all_blockers_resolved "$body"; then
+      info "Issue #$num dependencies resolved — marking $READY_LABEL"
+      gh issue edit "$num" \
+        --add-label "$READY_LABEL" \
+        --remove-label "$BLOCKED_LABEL" \
+        --repo "$REPO" 2>/dev/null || true
+    fi
+  done
 }
 
 # Atomically claim an issue by assigning it. Returns 0 if successful.
@@ -177,13 +246,24 @@ release_issue() {
   gh issue edit "$number" --remove-label "$CLAIMED_LABEL" --remove-assignee "$ASSIGNEE" --repo "$REPO" 2>/dev/null || true
 }
 
-mark_blocked() {
+# Called when unresolved "Blocked by #N" dependencies are detected before the agent runs.
+mark_dependency_blocked() {
   local number="$1"
   gh issue edit "$number" \
     --add-label "$BLOCKED_LABEL" \
     --remove-label "$CLAIMED_LABEL" \
+    --remove-label "$READY_LABEL" \
     --repo "$REPO" 2>/dev/null || true
-  # Assignment to $ASSIGNEE stays as a permanent record
+}
+
+# Called when an agent signals BLOCKED or crashes — needs human attention, not a dependency issue.
+mark_agent_stuck() {
+  local number="$1"
+  gh issue edit "$number" \
+    --add-label "$HUMAN_LABEL" \
+    --remove-label "$CLAIMED_LABEL" \
+    --remove-label "$READY_LABEL" \
+    --repo "$REPO" 2>/dev/null || true
 }
 
 
@@ -226,7 +306,7 @@ ${prd_section}
 - **GitHub repo:** ${REPO}
 - **Working branch:** \`${branch}\` (already checked out — do NOT switch branches)
 - **Stack:** React Native (Expo) + Convex backend, TypeScript strict mode
-- **Domain:** UK film/TV production crew short term hiring tool (see \`UBIQUITOUS_LANGUAGE.md\`)
+- **Domain:** UK film/TV production crew short term hiring tool (see \`CONTEXT.md\`)
 
 ## Available Skills
 Use these /skills to list all available skills to help you with specific tasks (invoke with /skill-name):
@@ -256,7 +336,9 @@ Update it at the start of every step so a future iteration can resume without re
 
 ### Step 1 — Understand before implementing
 - Re-read the issue carefully
-- Read \`UBIQUITOUS_LANGUAGE.md\` for domain terminology
+- Read \`CLAUDE.md\` — it contains project-wide coding rules that override everything else
+- Read \`CONTEXT.md\` for domain terminology
+- If touching any Convex code, read \`convex/_generated/ai/guidelines.md\` before writing a single line
 - Explore the relevant files (\`src/\`, \`convex/\`) before touching anything
 - Check \`git log --oneline -20\` for recent related changes
 
@@ -407,7 +489,7 @@ RUNNER
 
     docker sandbox run claude "$worktree" \
       -- bash .ralph-run.sh \
-      2>&1 > "$log_file"
+      > "$log_file" 2>&1
 
     rm -f "$worktree/.ralph-prompt.txt" "$worktree/.ralph-run.sh" 2>/dev/null || true
   else
@@ -417,8 +499,9 @@ RUNNER
       # Read prompt into a variable — avoids re-expansion of special chars when passing to -p
       local prompt
       prompt=$(cat "$prompt_file")
-      claude --dangerously-skip-permissions --verbose --output-format stream-json \
-        -p "$prompt" \
+      timeout "$AGENT_TIMEOUT" \
+        claude --dangerously-skip-permissions --verbose --output-format stream-json \
+          -p "$prompt" \
         > "$log_file" 2>&1
     )
   fi
@@ -437,7 +520,11 @@ agent_loop() {
     iter=$((iter + 1))
     agent_log "$agent_id" "iter $iter/$MAX_ITER — scanning for issues..."
 
-    # ── Find next unclaimed issue ──────────────────────────────
+    # ── Re-label blocked issues whose dependencies have closed (agent #1 only) ──
+    # Running this from every agent in parallel is wasteful and causes redundant API calls.
+    [[ "$agent_id" == "1" ]] && unblock_resolved_issues
+
+    # ── Find next ready-for-agent issue ───────────────────────────
     local issue_json
     issue_json=$(find_next_issue)
 
@@ -459,11 +546,19 @@ agent_loop() {
 
     # ── Claim the issue ────────────────────────────────────────
     if ! claim_issue "$issue_number"; then
-      agent_log "$agent_id" "lost race to claim #$issue_number — retrying..."
+      agent_log "$agent_id" "lost race to claim #$issue_number — releasing and retrying..."
+      release_issue "$issue_number"
       sleep $((RANDOM % 5 + 1))
       continue
     fi
     agent_log "$agent_id" "claimed #$issue_number: $issue_title"
+
+    # ── Verify dependencies are resolved (safety net) ──────────
+    if ! all_blockers_resolved "$issue_body"; then
+      agent_log "$agent_id" "#$issue_number has unresolved dependencies — marking blocked and skipping"
+      mark_dependency_blocked "$issue_number"
+      continue
+    fi
 
     # ── Set up isolated git worktree ───────────────────────────
     local title_slug
@@ -502,29 +597,33 @@ agent_loop() {
     agent_log "$agent_id" "running claude on #$issue_number... (log: $log_file)"
 
     # ── Run the agent ──────────────────────────────────────────
-    local output=""
     local run_exit=0
-    output=$(run_claude "$worktree" "$prompt_file" "$log_file" 2>&1) || run_exit=$?
+    run_claude "$worktree" "$prompt_file" "$log_file" || run_exit=$?
 
-    if [[ $run_exit -ne 0 ]]; then
+    if [[ $run_exit -eq 124 ]]; then
+      warn "Agent #$agent_id — claude timed out after ${AGENT_TIMEOUT}s for issue #$issue_number"
+    elif [[ $run_exit -ne 0 ]]; then
       warn "Agent #$agent_id — claude exited with code $run_exit for issue #$issue_number"
     fi
 
     rm -f "$prompt_file"
 
-    # ── Parse the promise signal ───────────────────────────────
-    if echo "$output" | grep -q '<promise>COMPLETE</promise>'; then
+    # ── Parse the promise signal (read from log file — claude output goes there directly) ──
+    if grep -q '<promise>COMPLETE</promise>' "$log_file" 2>/dev/null; then
       agent_log "$agent_id" "#$issue_number — COMPLETE. PR created, moving on."
-      gh issue edit "$issue_number" --remove-label "$CLAIMED_LABEL" --repo "$REPO" 2>/dev/null || true
+      gh issue edit "$issue_number" \
+        --remove-label "$CLAIMED_LABEL" \
+        --remove-label "$READY_LABEL" \
+        --repo "$REPO" 2>/dev/null || true
       # Assignment to $ASSIGNEE stays permanently — prevents re-claiming on future runs.
       # GitHub will auto-close the issue when the PR is merged ("Closes #N").
 
-    elif echo "$output" | grep -q '<promise>BLOCKED</promise>'; then
-      agent_log "$agent_id" "#$issue_number — BLOCKED signal received"
-      mark_blocked "$issue_number"
+    elif grep -q '<promise>BLOCKED</promise>' "$log_file" 2>/dev/null; then
+      agent_log "$agent_id" "#$issue_number — BLOCKED signal received (marking $HUMAN_LABEL)"
+      mark_agent_stuck "$issue_number"
 
     else
-      warn "Agent #$agent_id — no promise signal for #$issue_number. Marking blocked. Check: $log_file"
+      warn "Agent #$agent_id — no promise signal for #$issue_number. Marking $HUMAN_LABEL. Check: $log_file"
       # Extract the most useful error detail from the log:
       # prefer the last API error message, otherwise fall back to the last result/error line
       local error_detail=""
@@ -566,12 +665,12 @@ ${error_detail:-No structured error found — agent produced no promise signal}
 
 **Full log:** \`${log_file}\`
 
-To retry, remove the \`blocked\` label and \`${ASSIGNEE}\` assignee from this issue.
+To retry, remove the \`${HUMAN_LABEL}\` label and \`${ASSIGNEE}\` assignee from this issue, then re-add \`${READY_LABEL}\`.
 COMMENT
 )"
       gh issue comment "$issue_number" --body "$comment_body" --repo "$REPO" 2>/dev/null || \
         warn "Could not post failure comment on #$issue_number"
-      mark_blocked "$issue_number"
+      mark_agent_stuck "$issue_number"
     fi
 
     # ── Tidy up worktree (sandbox is reused across issues to avoid re-downloading the template) ──
