@@ -13,31 +13,24 @@ export function currentSyncWindow(): SyncWindow {
 
 export function createCalendarOrchestrator(adapters: AdapterRegistry) {
   return {
-    async syncNewConnection(
-      ctx: ActionCtx,
-      connectionId: Id<"calendarConnections">,
-      userId: Id<"users">,
-    ): Promise<{ syncError: string | null }> {
+    async syncConnection(ctx: ActionCtx, connectionId: Id<"calendarConnections">): Promise<void> {
       const connection = await ctx.runQuery(
         internal.calendars.actionHelpers.getConnectionInternal,
         { connectionId },
       );
       if (!connection) {
-        return { syncError: "Calendar connection not found" };
+        throw new Error("Calendar connection not found");
       }
       const adapter = adapters[connection.provider];
       if (!adapter?.fetchEvents) {
-        return {
-          syncError: `Provider "${connection.provider}" does not support server-side sync`,
-        };
+        throw new Error(`Provider "${connection.provider}" does not support server-side sync`);
       }
       const window = currentSyncWindow();
-      let syncError: string | null = null;
       try {
         const events = await adapter.fetchEvents(ctx, connection, window);
         await ctx.runMutation(internal.calendars.mutations.replaceEvents, {
           connectionId,
-          userId,
+          userId: connection.userId,
           events,
         });
         await ctx.runMutation(internal.calendars.mutations.markSynced, {
@@ -45,22 +38,13 @@ export function createCalendarOrchestrator(adapters: AdapterRegistry) {
           error: undefined,
         });
       } catch (err) {
-        syncError = err instanceof Error ? err.message : "Unknown sync error";
+        const message = err instanceof Error ? err.message : "Unknown sync error";
         await ctx.runMutation(internal.calendars.mutations.markSynced, {
           connectionId,
-          error: syncError,
+          error: message,
         });
+        throw err;
       }
-      return { syncError };
-    },
-
-    async syncConnection(
-      ctx: ActionCtx,
-      connectionId: Id<"calendarConnections">,
-      userId: Id<"users">,
-    ): Promise<void> {
-      const { syncError } = await this.syncNewConnection(ctx, connectionId, userId);
-      if (syncError) throw new Error(syncError);
     },
 
     addToCalendar(_event: unknown): Promise<void> {

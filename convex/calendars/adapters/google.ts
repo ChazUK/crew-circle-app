@@ -287,7 +287,10 @@ export const GoogleCalendarAdapter: CalendarProvider = {
       );
     }
     const scope = conn.scope ?? "";
-    if (!scope.includes("calendar.events") && !scope.includes('calendar"')) {
+    if (
+      !scope.includes("calendar.events") &&
+      !scope.split(/\s+/).includes("https://www.googleapis.com/auth/calendar")
+    ) {
       return {
         kind: "insufficient_scope",
         message:

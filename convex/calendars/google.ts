@@ -136,7 +136,12 @@ export const connectGoogle = action({
       },
     );
 
-    const { syncError } = await orchestrator.syncNewConnection(ctx, connectionId, user._id);
+    let syncError: string | null = null;
+    try {
+      await orchestrator.syncConnection(ctx, connectionId);
+    } catch (err) {
+      syncError = err instanceof Error ? err.message : "Unknown sync error";
+    }
     return { connectionId, enabledSubCalendarIds: [primaryId], syncError };
   },
 });
