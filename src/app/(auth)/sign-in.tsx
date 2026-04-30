@@ -33,14 +33,6 @@ export default function Page() {
   const { signIn, errors: clerkErrors, fetchStatus } = useSignIn();
   const router = useRouter();
 
-  useEffect(() => {
-    return () => {
-      signIn.reset();
-      signInForm.reset();
-      verifyForm.reset();
-    };
-  }, []);
-
   const signInForm = useForm({
     defaultValues: {
       emailAddress: "",
@@ -133,6 +125,14 @@ export default function Page() {
       }
     },
   });
+
+  useEffect(() => {
+    return () => {
+      signIn.reset();
+      signInForm.reset();
+      verifyForm.reset();
+    };
+  }, []);
 
   async function finalizeSignIn() {
     await signIn.finalize({
