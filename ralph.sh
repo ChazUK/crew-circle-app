@@ -18,12 +18,13 @@
 #   git, jq
 #
 # Usage:
-#   ./ralph.sh                         # 5 agents, local mode
-#   RALPH_AGENTS=3 ./ralph.sh          # 3 parallel agents
-#   RALPH_SANDBOX=1 ./ralph.sh         # Isolate each agent in a Docker sandbox microVM (recommended for AFK)
-#   RALPH_PRD_NUMBER=42 ./ralph.sh     # Point agents at a PRD issue for context
-#   RALPH_MAX_ITER=10 ./ralph.sh       # Cap at 10 issues per agent then stop
-#   RALPH_TIMEOUT=7200 ./ralph.sh      # Claude timeout in seconds per issue (default: 3600)
+#   ./ralph.sh                                   # 5 agents, local mode
+#   RALPH_AGENTS=3 ./ralph.sh                    # 3 parallel agents
+#   RALPH_SANDBOX=1 ./ralph.sh                   # Isolate each agent in a Docker sandbox microVM (recommended for AFK)
+#   RALPH_PRD_NUMBER=42 ./ralph.sh               # Point agents at a PRD issue for context
+#   RALPH_MAX_ITER=10 ./ralph.sh                 # Cap at 10 issues per agent then stop
+#   RALPH_TIMEOUT=7200 ./ralph.sh                # Claude timeout in seconds per issue (default: 3600)
+#   RALPH_MODEL=claude-opus-4-7 ./ralph.sh       # Override model (default: claude-sonnet-4-6)
 
 set -euo pipefail
 
@@ -32,10 +33,11 @@ set -euo pipefail
 # ─────────────────────────────────────────────────────────────
 REPO="${RALPH_REPO:-ChazUK/crewcircle-app}"
 NUM_AGENTS="${RALPH_AGENTS:-5}"
-MAX_ITER="${RALPH_MAX_ITER:-20}"       # Max issues per agent before it self-terminates
-SANDBOX="${RALPH_SANDBOX:-0}"          # 1 = wrap each claude invocation in Docker
-PRD_NUMBER="${RALPH_PRD_NUMBER:-}"     # GitHub issue # that contains the PRD (optional)
-AGENT_TIMEOUT="${RALPH_TIMEOUT:-3600}" # Seconds before killing a hung claude process
+MAX_ITER="${RALPH_MAX_ITER:-20}"        # Max issues per agent before it self-terminates
+SANDBOX="${RALPH_SANDBOX:-0}"           # 1 = wrap each claude invocation in Docker
+PRD_NUMBER="${RALPH_PRD_NUMBER:-}"      # GitHub issue # that contains the PRD (optional)
+AGENT_TIMEOUT="${RALPH_TIMEOUT:-3600}"  # Seconds before killing a hung claude process
+CLAUDE_MODEL="${RALPH_MODEL:-claude-sonnet-4-6}" # Model passed to --model flag
 
 CLAIMED_LABEL="ralph-in-progress"
 BLOCKED_LABEL="blocked"
@@ -48,6 +50,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RALPH_DIR="$SCRIPT_DIR/.ralph"
 WORKTREES_DIR="$RALPH_DIR/worktrees"
 LOG_DIR="$RALPH_DIR/logs"
+LOCK_FILE="$RALPH_DIR/ralph.lock"
 
 # ─────────────────────────────────────────────────────────────
 # Logging
@@ -61,16 +64,54 @@ agent_log() {
   printf '\033[35m[agent#%s %s]\033[0m %s\n' "$id" "$(_ts)" "$*" >&2
 }
 
+# Recursively kill a PID and all its descendants (bottom-up to avoid orphans).
+kill_tree() {
+  local pid="$1" sig="${2:-TERM}"
+  local children
+  children=$(pgrep -P "$pid" 2>/dev/null) || true
+  for child in $children; do
+    kill_tree "$child" "$sig"
+  done
+  kill -"$sig" "$pid" 2>/dev/null || true
+}
+
 # ─────────────────────────────────────────────────────────────
 # Cleanup on exit / Ctrl-C
 # ─────────────────────────────────────────────────────────────
 AGENT_PIDS=()
+_CLEANUP_DONE=0
 
 cleanup() {
-  info "Shutting down — releasing any in-flight claims..."
-  for pid in "${AGENT_PIDS[@]:-}"; do
-    kill "$pid" 2>/dev/null || true
-  done
+  # Guard against re-entry: EXIT trap fires after INT/TERM handlers return, which would
+  # run cleanup a second time and produce duplicate "Releasing claim" API calls.
+  [[ "$_CLEANUP_DONE" == "1" ]] && return 0
+  _CLEANUP_DONE=1
+
+  info "Shutting down — sending SIGTERM to all agent processes..."
+
+  # SIGTERM each agent's entire process tree (covers nested claude/timeout processes).
+  # Simple kill "$pid" only reaches the direct bash subshell; claude runs as a grandchild
+  # and would survive as an orphan without the recursive kill_tree approach.
+  if [[ ${#AGENT_PIDS[@]} -gt 0 ]]; then
+    for pid in "${AGENT_PIDS[@]}"; do
+      kill_tree "$pid" TERM
+    done
+
+    # Give agents up to 10 s to shut down gracefully before force-killing.
+    local deadline=$(( $(date +%s) + 10 ))
+    for pid in "${AGENT_PIDS[@]}"; do
+      while kill -0 "$pid" 2>/dev/null && [[ $(date +%s) -lt $deadline ]]; do
+        sleep 1
+      done
+    done
+
+    # Force-kill any survivors and reap zombies.
+    for pid in "${AGENT_PIDS[@]}"; do
+      kill_tree "$pid" KILL
+    done
+  fi
+  wait 2>/dev/null || true
+
   # Release ralph-in-progress label from any issues still actively being worked on.
   # Assignment to $ASSIGNEE stays as a permanent record so issues are never re-claimed.
   local claimed
@@ -82,10 +123,21 @@ cleanup() {
     warn "Releasing in-flight claim on issue #$num"
     gh issue edit "$num" --remove-label "$CLAIMED_LABEL" --repo "$REPO" 2>/dev/null || true
   done
-  # Prune worktrees
+
+  # Remove worktrees one-by-one via git so the registry is updated alongside the directory.
+  # (git worktree prune only removes entries for already-missing directories, so it would
+  # be a no-op if called before rm -rf and leave stale entries if called after.)
+  if [[ -d "$WORKTREES_DIR" ]]; then
+    for wt_path in "$WORKTREES_DIR"/agent-*/; do
+      [[ -d "$wt_path" ]] || continue
+      git -C "$SCRIPT_DIR" worktree remove --force "$wt_path" 2>/dev/null || true
+    done
+  fi
   git -C "$SCRIPT_DIR" worktree prune 2>/dev/null || true
   rm -rf "$WORKTREES_DIR"
-  # Remove persistent sandboxes now that all agents are done
+  rm -f "$LOCK_FILE"
+
+  # Remove persistent sandboxes now that all agents are done.
   if [[ "$SANDBOX" == "1" ]]; then
     for i in $(seq 1 "$NUM_AGENTS"); do
       docker sandbox rm "claude-agent-${i}" 2>/dev/null || true
@@ -99,15 +151,16 @@ trap cleanup EXIT INT TERM
 # ─────────────────────────────────────────────────────────────
 check_deps() {
   local missing=()
-  for cmd in gh git jq claude; do
+  for cmd in gh git jq claude timeout; do
     command -v "$cmd" &>/dev/null || missing+=("$cmd")
   done
   if [[ ${#missing[@]} -gt 0 ]]; then
     err "Missing required tools: ${missing[*]}"
     echo "Install guide:" >&2
-    echo "  gh:     https://cli.github.com" >&2
-    echo "  claude: npm install -g @anthropic-ai/claude-code" >&2
-    echo "  jq:     brew install jq" >&2
+    echo "  gh:      https://cli.github.com" >&2
+    echo "  claude:  npm install -g @anthropic-ai/claude-code" >&2
+    echo "  jq:      brew install jq" >&2
+    echo "  timeout: brew install coreutils  (macOS only)" >&2
     exit 1
   fi
 
@@ -309,7 +362,12 @@ ${prd_section}
 - **Domain:** UK film/TV production crew short term hiring tool (see \`CONTEXT.md\`)
 
 ## Available Skills
-Use these /skills to list all available skills to help you with specific tasks (invoke with /skill-name):
+Run \`/skills\` to list all installed skills. Relevant ones for this project:
+- \`/heroui-native\` — HeroUI Native component docs and patterns
+- \`/convex\` — Convex backend patterns and guidelines
+- \`/tdd\` — test-driven development loop
+- \`/diagnose\` — disciplined debugging for hard bugs
+- \`/github-issues\` — create or update GitHub issues via MCP
 
 ---
 
@@ -478,12 +536,12 @@ run_claude() {
     gitdir=$(git -C "$worktree" rev-parse --git-dir)
     cp "$prompt_file" "$worktree/.ralph-prompt.txt"
     printf '.ralph-prompt.txt\n.ralph-run.sh\n' >> "$gitdir/info/exclude"
-    cat > "$worktree/.ralph-run.sh" << 'RUNNER'
+    cat > "$worktree/.ralph-run.sh" << RUNNER
 #!/usr/bin/env bash
 set -euo pipefail
 # Read prompt into a variable — avoids re-expansion of special chars when passing to -p
-prompt=$(cat .ralph-prompt.txt)
-exec claude --dangerously-skip-permissions --verbose --output-format stream-json -p "$prompt"
+prompt=\$(cat .ralph-prompt.txt)
+exec claude --dangerously-skip-permissions --verbose --output-format stream-json --model "${CLAUDE_MODEL}" -p "\$prompt"
 RUNNER
     chmod +x "$worktree/.ralph-run.sh"
 
@@ -501,6 +559,7 @@ RUNNER
       prompt=$(cat "$prompt_file")
       timeout "$AGENT_TIMEOUT" \
         claude --dangerously-skip-permissions --verbose --output-format stream-json \
+          --model "$CLAUDE_MODEL" \
           -p "$prompt" \
         > "$log_file" 2>&1
     )
@@ -691,6 +750,7 @@ main() {
   info "  repo:      $REPO"
   info "  agents:    $NUM_AGENTS"
   info "  max iter:  $MAX_ITER issues/agent"
+  info "  model:     $CLAUDE_MODEL"
   info "  sandbox:   $([ "$SANDBOX" == "1" ] && echo "Docker" || echo "local")"
   [[ -n "$PRD_NUMBER" ]] && info "  PRD issue:  #$PRD_NUMBER"
   echo >&2
@@ -699,6 +759,18 @@ main() {
   ensure_labels
 
   mkdir -p "$WORKTREES_DIR" "$LOG_DIR"
+
+  # Prevent two concurrent ralph.sh instances from trampling each other's worktrees.
+  if [[ -f "$LOCK_FILE" ]]; then
+    local old_pid
+    old_pid=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
+    if [[ -n "$old_pid" ]] && kill -0 "$old_pid" 2>/dev/null; then
+      err "Another ralph.sh instance is already running (PID: $old_pid). Exiting."
+      exit 1
+    fi
+    warn "Stale lock from PID ${old_pid:-unknown} — cleaning up and continuing."
+  fi
+  echo "$$" > "$LOCK_FILE"
 
   info "Spawning $NUM_AGENTS agents..."
 
