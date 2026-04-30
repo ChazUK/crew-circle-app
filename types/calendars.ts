@@ -57,6 +57,5 @@ export interface CalendarProvider<TCtx = unknown, TConn = unknown> {
 export type AdapterRegistry = {
   google: CalendarProvider;
   ical: CalendarProvider;
-  native: CalendarProvider;
   microsoft?: CalendarProvider;
 };

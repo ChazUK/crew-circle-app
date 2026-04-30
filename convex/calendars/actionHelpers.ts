@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { Doc, Id } from "../_generated/dataModel";
+import { Doc } from "../_generated/dataModel";
 import { internalQuery } from "../_generated/server";
 
 export const getConnectionForOwner = internalQuery({
@@ -19,5 +19,3 @@ export const getConnectionInternal = internalQuery({
     return ctx.db.get(args.connectionId);
   },
 });
-
-export type SafeUser = { _id: Id<"users"> };

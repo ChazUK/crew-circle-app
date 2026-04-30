@@ -1,48 +1,20 @@
-import { api } from "@convex/_generated/api";
-import { useQuery } from "convex/react";
-import { format } from "date-fns";
+import { format, startOfMonth } from "date-fns";
 import { useThemeColor } from "heroui-native";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Calendar, DateData } from "react-native-calendars";
 import { ScrollView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CalendarConnectionsSheet } from "@/components/ui/CalendarConnectionsSheet";
 import { GearIcon } from "@/components/ui/icons/GearIcon";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function toIsoDate(ts: number): string {
-  const d = new Date(ts);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function parseIsoDateLocal(isoDate: string): Date {
-  const [y, m, d] = isoDate.split("-").map(Number);
-  return new Date(y, m - 1, d, 0, 0, 0, 0);
-}
-
-function formatTimeRange(startsAt: number, endsAt: number, isAllDay: boolean): string {
-  if (isAllDay) return "All day";
-  const start = format(new Date(startsAt), "HH:mm");
-  const end = format(new Date(endsAt), "HH:mm");
-  return `${start} – ${end}`;
-}
-
 export default function Diary() {
-  const todayIso = toIsoDate(Date.now());
+  const today = new Date();
+  const todayIso = format(today, "yyyy-MM-dd");
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
-  // The first-of-month being viewed on the calendar grid. Updated when the
-  // user navigates months so we only pull events for the visible window.
-  const [visibleMonth, setVisibleMonth] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const [_visibleMonth, setVisibleMonth] = useState<string>(() => {
+    return format(startOfMonth(new Date()), "yyyy-MM-dd");
   });
-  const [isConnectionsOpen, setIsConnectionsOpen] = useState(false);
   const insets = useSafeAreaInsets();
 
   const [accent, accentForeground, foreground, muted] = useThemeColor([
@@ -52,67 +24,13 @@ export default function Diary() {
     "muted",
   ]);
 
-  // Compute the exact date range rendered by the calendar grid: back to the
-  // Sunday that opens the first row, forward to the day after the Saturday
-  // that closes the last row. Always 35 or 42 days, never exceeds 90.
-  const { startsAtMs, endsAtMs } = useMemo(() => {
-    const base = parseIsoDateLocal(visibleMonth);
-    const firstOfMonth = new Date(base.getFullYear(), base.getMonth(), 1);
-    const lastOfMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0);
-    const gridStart = new Date(firstOfMonth);
-    gridStart.setDate(1 - firstOfMonth.getDay()); // back to Sunday of first row
-    const gridEnd = new Date(lastOfMonth);
-    gridEnd.setDate(lastOfMonth.getDate() + (6 - lastOfMonth.getDay()) + 1); // day after Saturday of last row
-    return { startsAtMs: gridStart.getTime(), endsAtMs: gridEnd.getTime() };
-  }, [visibleMonth]);
-
-  const events = useQuery(api.calendars.queries.listEventsInRange, {
-    startsAtMs,
-    endsAtMs,
-  });
-
-  const eventsByDate = useMemo(() => {
-    const map: Record<string, typeof events> = {};
-    if (!events) return map;
-    for (const event of events) {
-      const key = toIsoDate(event.startsAt);
-      (map[key] ||= []).push(event);
-    }
-    return map;
-  }, [events]);
-
-  const markedDates = useMemo(() => {
-    const m: Record<
-      string,
-      { marked?: boolean; dotColor?: string; selected?: boolean; selectedColor?: string }
-    > = {};
-    for (const key of Object.keys(eventsByDate)) {
-      m[key] = { marked: true, dotColor: accent };
-    }
-    m[selectedDate] = {
-      ...(m[selectedDate] ?? {}),
-      selected: true,
-      selectedColor: accent,
-    };
-    return m;
-  }, [eventsByDate, selectedDate, accent]);
-
-  const sortedSelectedDayEvents = useMemo(() => {
-    const dayStart = parseIsoDateLocal(selectedDate).getTime();
-    const dayEnd = dayStart + DAY_MS;
-    const forDay = (events ?? []).filter(
-      (event) => event.startsAt >= dayStart && event.startsAt < dayEnd,
-    );
-    return forDay.sort((a, b) => a.startsAt - b.startsAt);
-  }, [events, selectedDate]);
-
   return (
     <ScrollView style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}>
       <View className="flex-1">
         <View className="flex-row items-center justify-between px-4">
           <Text className="text-2xl font-bold text-foreground">My Diary</Text>
           <Pressable
-            onPress={() => setIsConnectionsOpen(true)}
+            onPress={() => {}}
             accessibilityRole="button"
             accessibilityLabel="Link external calendars"
             hitSlop={10}
@@ -126,7 +44,6 @@ export default function Diary() {
           current={todayIso}
           onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
           onMonthChange={(m: DateData) => setVisibleMonth(m.dateString)}
-          markedDates={markedDates}
           theme={{
             backgroundColor: "transparent",
             calendarBackground: "transparent",
@@ -147,42 +64,10 @@ export default function Diary() {
         />
 
         <View className="px-4 mt-4">
-          <Text className="text-sm text-foreground/60">
-            {format(parseIsoDateLocal(selectedDate), "EEEE")}
-          </Text>
-          <Text className="text-sm text-foreground/60">
-            {format(parseIsoDateLocal(selectedDate), "d MMMM")}
-          </Text>
-        </View>
-
-        <View className="px-4 mt-4 mb-8 gap-2">
-          {events === undefined ? (
-            <Text className="text-sm text-foreground/60">Loading events…</Text>
-          ) : sortedSelectedDayEvents.length === 0 ? (
-            <Text className="text-sm text-foreground/60">No events for this day.</Text>
-          ) : (
-            sortedSelectedDayEvents.map((event) => (
-              <View
-                key={event._id}
-                className="rounded-xl border border-default-200 bg-default-100/50 p-3"
-              >
-                <Text className="text-xs font-semibold uppercase text-foreground/60">
-                  {formatTimeRange(event.startsAt, event.endsAt, event.isAllDay)}
-                </Text>
-                <Text className="text-base font-medium text-foreground" numberOfLines={2}>
-                  {event.title}
-                </Text>
-                {event.location ? (
-                  <Text className="text-xs text-foreground/60" numberOfLines={1}>
-                    {event.location}
-                  </Text>
-                ) : null}
-              </View>
-            ))
-          )}
+          <Text className="text-sm text-foreground/60">{format(selectedDate, "EEEE")}</Text>
+          <Text className="text-sm text-foreground/60">{format(selectedDate, "d MMMM")}</Text>
         </View>
       </View>
-      <CalendarConnectionsSheet isOpen={isConnectionsOpen} onOpenChange={setIsConnectionsOpen} />
     </ScrollView>
   );
 }
