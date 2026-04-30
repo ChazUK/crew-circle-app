@@ -52,13 +52,18 @@ export default function Diary() {
     "muted",
   ]);
 
-  // Query a buffer around the visible month so dots show up on the adjacent-
-  // month days that react-native-calendars includes on the grid edges.
+  // Compute the exact date range rendered by the calendar grid: back to the
+  // Sunday that opens the first row, forward to the day after the Saturday
+  // that closes the last row. Always 35 or 42 days, never exceeds 90.
   const { startsAtMs, endsAtMs } = useMemo(() => {
     const base = parseIsoDateLocal(visibleMonth);
-    const start = new Date(base.getFullYear(), base.getMonth() - 1, 1).getTime();
-    const end = new Date(base.getFullYear(), base.getMonth() + 2, 1).getTime();
-    return { startsAtMs: start, endsAtMs: end };
+    const firstOfMonth = new Date(base.getFullYear(), base.getMonth(), 1);
+    const lastOfMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+    const gridStart = new Date(firstOfMonth);
+    gridStart.setDate(1 - firstOfMonth.getDay()); // back to Sunday of first row
+    const gridEnd = new Date(lastOfMonth);
+    gridEnd.setDate(lastOfMonth.getDate() + (6 - lastOfMonth.getDay()) + 1); // day after Saturday of last row
+    return { startsAtMs: gridStart.getTime(), endsAtMs: gridEnd.getTime() };
   }, [visibleMonth]);
 
   const events = useQuery(api.calendars.queries.listEventsInRange, {
