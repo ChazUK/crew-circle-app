@@ -240,7 +240,7 @@ all_blockers_resolved() {
 
   for num in $blockers; do
     local state
-    state=$(gh issue view "$num" --repo "$REPO" --json state --jq '.state' 2>/dev/null || echo "OPEN")
+    state=$(gh issue view "$num" --comments --repo "$REPO" --json state --jq '.state' 2>/dev/null || echo "OPEN")
     if [[ "$state" != "CLOSED" ]]; then
       return 1
     fi
@@ -330,9 +330,9 @@ build_prompt() {
 ## Reference Architecture (PRD)
 Fetch and read issue #${PRD_NUMBER} for the full product spec:
 \`\`\`bash
-gh issue view ${PRD_NUMBER} --repo ${REPO}
+gh issue view ${PRD_NUMBER} --repo ${REPO} --comments
 \`\`\`
-Use it as your authoritative reference for architecture, conventions, and scope."
+Use it as your authoritative reference for architecture, conventions, and scope. The issue body contains the full consolidated spec — read it completely before implementing."
   fi
 
   cat <<PROMPT

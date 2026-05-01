@@ -88,3 +88,5 @@ Do not include:
 
 The test for a good issue: a developer who has never seen this codebase should be able to implement the ticket correctly using only the
 issue body and the files referenced within it.
+
+Files that contain a single function/method should be named the same as the function/method name e.g. `sendEmail.ts` for a function called `sendEmail`.
