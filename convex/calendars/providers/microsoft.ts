@@ -43,6 +43,7 @@ type MicrosoftCalendarItem = {
 
 type MicrosoftCalendarListResponse = {
   value?: MicrosoftCalendarItem[];
+  "@odata.nextLink"?: string;
 };
 
 function throwAuthError(message: string): never {
@@ -105,12 +106,14 @@ export const MicrosoftCalendarProvider: CalendarProvider = {
     const meData = (await meResponse.json()) as MicrosoftUserInfo;
     const externalAccountId = meData.mail ?? meData.userPrincipalName;
 
-    // 3. List calendars so the connection is immediately syncable
+    // 3. List calendars so the connection is immediately syncable — follow @odata.nextLink across pages
     const subCalendars: SubCalendarBlueprint[] = [];
-    const calResponse = await fetch("https://graph.microsoft.com/v1.0/me/calendars", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (calResponse.ok) {
+    let nextUrl: string | undefined = "https://graph.microsoft.com/v1.0/me/calendars";
+    while (nextUrl) {
+      const calResponse: Response = await fetch(nextUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!calResponse.ok) break;
       const calData = (await calResponse.json()) as MicrosoftCalendarListResponse;
       for (const item of calData.value ?? []) {
         subCalendars.push({
@@ -119,6 +122,7 @@ export const MicrosoftCalendarProvider: CalendarProvider = {
           showAsBusy: true,
         });
       }
+      nextUrl = calData["@odata.nextLink"];
     }
 
     // 4. Encrypt tokens — never leave the server unencrypted

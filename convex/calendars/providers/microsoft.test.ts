@@ -166,6 +166,64 @@ describe("MicrosoftCalendarProvider.connect", () => {
     ).rejects.toMatchObject({ kind: "auth" });
   });
 
+  test("paginates /me/calendars by following @odata.nextLink", async () => {
+    const t = convexTest(schema, modules);
+
+    const page1Url = "https://graph.microsoft.com/v1.0/me/calendars";
+    const page2Url = "https://graph.microsoft.com/v1.0/me/calendars?$skiptoken=PAGE2";
+
+    const fetchSpy = vi.fn().mockImplementation((url: string) => {
+      const parsed = new URL(url);
+      if (parsed.hostname === "login.microsoftonline.com") {
+        return Promise.resolve({ ok: true, json: async () => FAKE_TOKEN_RESPONSE });
+      }
+      if (parsed.hostname === "graph.microsoft.com" && parsed.pathname === "/v1.0/me") {
+        return Promise.resolve({ ok: true, json: async () => FAKE_ME_RESPONSE });
+      }
+      if (url === page1Url) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            value: [{ id: "cal-1", name: "Calendar", isDefaultCalendar: true }],
+            "@odata.nextLink": page2Url,
+          }),
+        });
+      }
+      if (url === page2Url) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            value: [{ id: "cal-2", name: "Birthdays", isDefaultCalendar: false }],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: false, text: async () => "unexpected url" });
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await t.action((ctx) =>
+      MicrosoftCalendarProvider.connect(
+        ctx,
+        {
+          provider: "microsoft",
+          authCode: "auth-code",
+          codeVerifier: "verifier",
+          clientId: "client-id",
+          redirectUri: "https://app.example/callback",
+          label: "Work",
+        },
+        { userId: "user-1", color: "#6366f1" },
+      ),
+    );
+
+    expect(result.subCalendars).toHaveLength(2);
+    expect(result.subCalendars[0]).toMatchObject({ externalId: "cal-1", label: "Calendar" });
+    expect(result.subCalendars[1]).toMatchObject({ externalId: "cal-2", label: "Birthdays" });
+    expect(fetchSpy.mock.calls.filter((c) => String(c[0]).includes("/me/calendars"))).toHaveLength(
+      2,
+    );
+  });
+
   test("token POST targets the Microsoft common tenant endpoint", async () => {
     const t = convexTest(schema, modules);
 
