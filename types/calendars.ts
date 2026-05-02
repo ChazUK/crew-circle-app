@@ -10,6 +10,13 @@ export type IncomingEvent = {
   endsAt: number;
   isAllDay: boolean;
   originalTimezone?: string;
+  // RFC 5545 RRULE string for recurring events. Consumed by the sync
+  // pipeline (expandRecurrence) and stripped before persistence — the
+  // expanded instances are stored individually, not the rule itself.
+  rrule?: string;
+  // Provider-reported lifecycle state. Used by the sync pipeline to
+  // tombstone cancelled events (Google/Microsoft) — not persisted.
+  status?: "confirmed" | "tentative" | "cancelled";
 };
 
 export type SubCalendar = {

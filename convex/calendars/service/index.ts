@@ -1,6 +1,7 @@
 import type {
   CalendarConnectParams,
   CalendarProviderRegistry,
+  IncomingEvent,
   SubCalendar,
   SyncWindow,
 } from "@shared/calendars";
@@ -10,12 +11,32 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import type { ActionCtx } from "../../_generated/server";
 import { requireOwnedConnection } from "../auth/requireOwnedConnection";
 import { assignPaletteColour } from "../domain/assignPaletteColour";
+import { expandRecurrence } from "../domain/expandRecurrence";
 import { filterSubCalendars } from "../domain/filterSubCalendars";
 
 export function currentSyncWindow(): SyncWindow {
   return {
     windowStartMs: Date.now() - 30 * 24 * 60 * 60 * 1000,
     windowEndMs: Date.now() + 180 * 24 * 60 * 60 * 1000,
+  };
+}
+
+// writeEvents' Convex validator is strict — `rrule` and `status` are
+// pipeline-internal and would be rejected. Drop them here so the
+// persisted shape matches the calendarEvents row exactly.
+function toWriteEventsShape(event: IncomingEvent) {
+  return {
+    externalId: event.externalId,
+    subCalendarId: event.subCalendarId,
+    uid: event.uid,
+    recurrenceId: event.recurrenceId,
+    title: event.title,
+    description: event.description,
+    location: event.location,
+    startsAt: event.startsAt,
+    endsAt: event.endsAt,
+    isAllDay: event.isAllDay,
+    originalTimezone: event.originalTimezone,
   };
 }
 
@@ -63,8 +84,86 @@ export function createCalendarService(providers: CalendarProviderRegistry) {
       await ctx.runMutation(internal.calendars.db.cascadeDelete.deleteConnection, { connectionId });
     },
 
-    async sync(_ctx: ActionCtx, _connectionId: Id<"calendarConnections">): Promise<void> {
-      throw new Error("Not implemented: service.sync");
+    // Inner sync pass for one Calendar Connection. Trusted internal entry
+    // point — assumes the caller (cron / explicit user-initiated action)
+    // has already authorised the run. Throws on any unrecoverable error;
+    // the retry wrapper added in #128 catches and tracks failures.
+    async sync(ctx: ActionCtx, connectionId: Id<"calendarConnections">): Promise<void> {
+      const connection: Doc<"calendarConnections"> | null = await ctx.runQuery(
+        internal.calendars.db.getConnectionInternal.getConnectionInternal,
+        { connectionId },
+      );
+      if (!connection) {
+        throw new Error(`Calendar Connection ${connectionId} not found`);
+      }
+      // Native sync runs on-device — the server has no access to the
+      // device's calendar store, so a server-side sync attempt is a
+      // programming error, not a transient failure.
+      if (connection.provider === "native") {
+        throw new Error("Native Calendar Connections sync from the device, not the server");
+      }
+
+      const provider = providers[connection.provider];
+      if (!provider.fetchEvents) {
+        throw new Error(`Provider ${connection.provider} does not support server-side fetch`);
+      }
+
+      const window = currentSyncWindow();
+      const incoming = await provider.fetchEvents(ctx, connection, window);
+
+      // Cancelled events are tombstones — they should be removed from the
+      // store, not expanded into recurring instances. Expand only live
+      // events; carry cancellations through as-is so their externalIds
+      // can drive deletedExternalIds below.
+      const expanded: IncomingEvent[] = incoming.flatMap((event) =>
+        event.status === "cancelled" ? [event] : expandRecurrence(event, window),
+      );
+
+      const groups = new Map<string, IncomingEvent[]>();
+      for (const event of expanded) {
+        if (event.subCalendarId === undefined) continue;
+        const list = groups.get(event.subCalendarId);
+        if (list) list.push(event);
+        else groups.set(event.subCalendarId, [event]);
+      }
+
+      for (const [externalSubCalendarId, eventsInGroup] of groups) {
+        const subCalendar: Doc<"calendarSubCalendars"> | null = await ctx.runQuery(
+          internal.calendars.db.getSubCalendarByExternalId.getSubCalendarByExternalId,
+          { connectionId, externalId: externalSubCalendarId },
+        );
+        // Sub-calendar not enabled for this connection — drop its events
+        // silently. The user has either deselected this calendar or
+        // never enabled it.
+        if (!subCalendar) continue;
+
+        const liveEvents = eventsInGroup
+          .filter((event) => event.status !== "cancelled")
+          .map(toWriteEventsShape);
+
+        // Only Google's events.list (with showDeleted=true) and
+        // Microsoft delta queries return cancelled markers. iCal /
+        // Native rely on writeEvents' window prune to remove deletions
+        // implicitly, so omit deletedExternalIds for them.
+        const deletedExternalIds =
+          connection.provider === "google"
+            ? eventsInGroup
+                .filter((event) => event.status === "cancelled")
+                .map((event) => event.externalId)
+            : undefined;
+
+        await ctx.runMutation(internal.calendars.db.writeEvents.writeEvents, {
+          connectionId,
+          subCalendarId: subCalendar._id,
+          syncWindow: window,
+          events: liveEvents,
+          deletedExternalIds,
+        });
+      }
+
+      await ctx.runMutation(internal.calendars.db.markConnectionSynced.markConnectionSynced, {
+        connectionId,
+      });
     },
 
     async syncNativeOnOpen(

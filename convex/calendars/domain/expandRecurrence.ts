@@ -2,10 +2,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import type { IncomingEvent, SyncWindow } from "@shared/calendars";
 import { RRuleTemporal } from "rrule-temporal";
 
-export function expandRecurrence(
-  event: IncomingEvent & { rrule?: string },
-  window: SyncWindow,
-): IncomingEvent[] {
+export function expandRecurrence(event: IncomingEvent, window: SyncWindow): IncomingEvent[] {
   if (event.rrule === undefined) {
     return [event];
   }
