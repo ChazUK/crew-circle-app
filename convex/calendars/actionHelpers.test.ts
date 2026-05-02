@@ -85,3 +85,61 @@ describe("getConnectionInternal", () => {
     expect(result).toBeNull();
   });
 });
+
+describe("getConnectionColoursForUser", () => {
+  test("returns an empty array when the user has no connections", async () => {
+    const { t, other } = await seed();
+    const result = await t.query(internal.calendars.actionHelpers.getConnectionColoursForUser, {
+      userId: other,
+    });
+    expect(result).toEqual([]);
+  });
+
+  test("returns the colour values of every connection owned by the user", async () => {
+    const { t, owner } = await seed();
+    await t.run((ctx) =>
+      ctx.db.insert("calendarConnections", {
+        userId: owner,
+        provider: "google",
+        label: "Work",
+        createdAt: Date.now(),
+        color: "#10b981",
+        syncErrorCount: 0,
+      }),
+    );
+    await t.run((ctx) =>
+      ctx.db.insert("calendarConnections", {
+        userId: owner,
+        provider: "microsoft",
+        label: "Outlook",
+        createdAt: Date.now(),
+        color: "#f59e0b",
+        syncErrorCount: 0,
+      }),
+    );
+
+    const result = await t.query(internal.calendars.actionHelpers.getConnectionColoursForUser, {
+      userId: owner,
+    });
+    expect(result.sort()).toEqual(["#10b981", "#6366f1", "#f59e0b"]);
+  });
+
+  test("does not return colours from another user's connections", async () => {
+    const { t, owner, other } = await seed();
+    await t.run((ctx) =>
+      ctx.db.insert("calendarConnections", {
+        userId: other,
+        provider: "google",
+        label: "Theirs",
+        createdAt: Date.now(),
+        color: "#ec4899",
+        syncErrorCount: 0,
+      }),
+    );
+
+    const result = await t.query(internal.calendars.actionHelpers.getConnectionColoursForUser, {
+      userId: owner,
+    });
+    expect(result).toEqual(["#6366f1"]);
+  });
+});

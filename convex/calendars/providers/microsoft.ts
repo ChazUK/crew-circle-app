@@ -1,4 +1,5 @@
 import type {
+  CalendarConnectContext,
   CalendarConnectParams,
   CalendarProvider,
   CalendarProviderCapabilities,
@@ -18,7 +19,11 @@ export const microsoftCapabilities: CalendarProviderCapabilities = {
 export const MicrosoftCalendarProvider: CalendarProvider = {
   capabilities: microsoftCapabilities,
 
-  async connect(_ctx: unknown, _params: CalendarConnectParams): Promise<void> {
+  async connect(
+    _ctx: unknown,
+    _params: CalendarConnectParams,
+    _context: CalendarConnectContext,
+  ): Promise<string> {
     throw new Error("Not implemented: Microsoft Calendar connect");
   },
 

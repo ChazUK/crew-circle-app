@@ -4,8 +4,10 @@ import type {
   SyncWindow,
 } from "@shared/calendars";
 
-import type { Id } from "../../_generated/dataModel";
+import { api, internal } from "../../_generated/api";
+import type { Doc, Id } from "../../_generated/dataModel";
 import type { ActionCtx } from "../../_generated/server";
+import { assignPaletteColour } from "../domain/assignPaletteColour";
 
 export function currentSyncWindow(): SyncWindow {
   return {
@@ -14,10 +16,38 @@ export function currentSyncWindow(): SyncWindow {
   };
 }
 
-export function createCalendarService(_providers: CalendarProviderRegistry) {
+export function createCalendarService(providers: CalendarProviderRegistry) {
   return {
-    async connect(_ctx: ActionCtx, _params: CalendarConnectParams): Promise<void> {
-      throw new Error("Not implemented: service.connect");
+    async connect(
+      ctx: ActionCtx,
+      params: CalendarConnectParams,
+    ): Promise<Id<"calendarConnections">> {
+      const user: Doc<"users"> | null = await ctx.runQuery(api.users.queries.getCurrentUser, {});
+      if (!user) throw new Error("Not authenticated");
+
+      const usedColours: string[] = await ctx.runQuery(
+        internal.calendars.actionHelpers.getConnectionColoursForUser,
+        { userId: user._id },
+      );
+      const color = assignPaletteColour(usedColours);
+
+      const provider = providers[params.provider];
+      const connectionIdString = await provider.connect(ctx, params, {
+        userId: user._id,
+        color,
+      });
+      const connectionId = connectionIdString as Id<"calendarConnections">;
+
+      if (params.provider === "ical") {
+        await ctx.runMutation(internal.calendars.mutations.insertSubCalendar, {
+          connectionId,
+          externalId: connectionId,
+          label: params.label,
+          showAsBusy: true,
+        });
+      }
+
+      return connectionId;
     },
 
     async disconnect(_ctx: ActionCtx, _connectionId: Id<"calendarConnections">): Promise<void> {

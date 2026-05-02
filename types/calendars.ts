@@ -72,9 +72,18 @@ export type CalendarConnectParams =
       label: string;
     };
 
+export type CalendarConnectContext = {
+  userId: string;
+  color: string;
+};
+
 export interface CalendarProvider<TCtx = unknown, TConn = unknown> {
   capabilities: CalendarProviderCapabilities;
-  connect(ctx: TCtx, params: CalendarConnectParams): Promise<void>;
+  connect(
+    ctx: TCtx,
+    params: CalendarConnectParams,
+    context: CalendarConnectContext,
+  ): Promise<string>;
   fetchEvents?(ctx: TCtx, connection: TConn, window: SyncWindow): Promise<IncomingEvent[]>;
   writeEvent?(
     ctx: TCtx,
