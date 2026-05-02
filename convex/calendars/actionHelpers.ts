@@ -19,3 +19,14 @@ export const getConnectionInternal = internalQuery({
     return ctx.db.get(args.connectionId);
   },
 });
+
+export const getConnectionColoursForUser = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args): Promise<string[]> => {
+    const connections = await ctx.db
+      .query("calendarConnections")
+      .withIndex("byUser", (q) => q.eq("userId", args.userId))
+      .collect();
+    return connections.map((connection) => connection.color);
+  },
+});
