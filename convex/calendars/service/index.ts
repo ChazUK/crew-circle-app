@@ -51,10 +51,20 @@ export function createCalendarService(providers: CalendarProviderRegistry) {
           // sub-calendar in this one. An iCal connection without its
           // sub-calendar can never sync, so schedule a cascade-delete to tear
           // it down before re-throwing — failing closed beats leaving the
-          // user with a half-created connection they can't fix.
-          await ctx.runMutation(internal.calendars.db.cascadeDelete.deleteConnection, {
-            connectionId,
-          });
+          // user with a half-created connection they can't fix. Swallow
+          // cleanup failures (logging them) so the original insertSubCalendar
+          // error always surfaces to the caller — that's the error that
+          // explains why the connection failed.
+          try {
+            await ctx.runMutation(internal.calendars.db.cascadeDelete.deleteConnection, {
+              connectionId,
+            });
+          } catch (cleanupError) {
+            console.error("Failed to roll back orphaned iCal connection", {
+              connectionId,
+              cleanupError,
+            });
+          }
           throw error;
         }
       }
