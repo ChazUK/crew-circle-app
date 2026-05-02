@@ -10,7 +10,8 @@ const PRIVATE_PREFIXES = [
   "[::ffff:", // IPv4-mapped IPv6 — can encode any IPv4 address including private ones
   "[fc", // IPv6 unique local (fc00::/7)
   "[fd", // IPv6 unique local (fc00::/7)
-  "[fe80", // IPv6 link-local (fe80::/10)
+  // IPv6 link-local (fe80::/10 = fe80:: through febf::).
+  // Third hex nibble must be 8–b; checked explicitly below rather than as a prefix.
 ];
 
 function isPrivateHostname(hostname: string): boolean {
@@ -18,6 +19,9 @@ function isPrivateHostname(hostname: string): boolean {
 
   if (PRIVATE_EXACT.has(h)) return true;
   if (PRIVATE_PREFIXES.some((prefix) => h.startsWith(prefix))) return true;
+
+  // fe80::/10 link-local: third nibble is 8, 9, a, or b (fe80:: through febf::)
+  if (h.startsWith("[fe") && "89ab".includes(h[3] ?? "")) return true;
 
   // 172.16.0.0/12 — covers 172.16.x.x through 172.31.x.x
   const parts = h.split(".");

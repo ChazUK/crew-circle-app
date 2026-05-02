@@ -31,10 +31,23 @@ describe("isSecureUrl", () => {
       ["[::ffff:10.0.0.1]", "http://[::ffff:10.0.0.1]/"], // IPv4-mapped RFC 1918
       ["[fc00::1]", "http://[fc00::1]/"], // IPv6 unique local
       ["[fd12:3456::1]", "http://[fd12:3456::1]/"], // IPv6 unique local
-      ["[fe80::1]", "http://[fe80::1]/"], // IPv6 link-local
+      ["[fe80::1]", "http://[fe80::1]/"], // IPv6 link-local fe80::/10
+      ["[fe90::1]", "http://[fe90::1]/"], // IPv6 link-local fe80::/10
+      ["[fea0::1]", "http://[fea0::1]/"], // IPv6 link-local fe80::/10
+      ["[feb0::1]", "http://[feb0::1]/"], // IPv6 link-local fe80::/10
+      ["[febf::1]", "http://[febf::1]/"], // IPv6 link-local fe80::/10 upper bound
     ])("blocks %s", (_label, rawUrl) => {
       expect(isSecureUrl(url(rawUrl))).toBe(false);
     });
+  });
+
+  describe("fe80::/10 boundary", () => {
+    test("blocks fe80::1 (start of range)", () =>
+      expect(isSecureUrl(url("http://[fe80::1]/"))).toBe(false));
+    test("blocks febf::1 (end of range)", () =>
+      expect(isSecureUrl(url("http://[febf::1]/"))).toBe(false));
+    test("allows fec0::1 (just above range)", () =>
+      expect(isSecureUrl(url("http://[fec0::1]/"))).toBe(true));
   });
 
   describe("172.16.0.0/12 boundary", () => {

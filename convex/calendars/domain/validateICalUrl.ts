@@ -32,7 +32,7 @@ export async function readBodyWithLimit(
 
       bytesRead += value.byteLength;
       if (bytesRead > maxBytes) {
-        reader.cancel();
+        reader.cancel().catch(() => {});
         return null;
       }
 
