@@ -111,6 +111,15 @@ export function createCalendarService(providers: CalendarProviderRegistry) {
       const window = currentSyncWindow();
       const incoming = await provider.fetchEvents(ctx, connection, window);
 
+      // Hoist Sub-Calendar resolution out of the per-group loop — one
+      // runQuery up front, then in-memory lookup. Sub-Calendar counts
+      // per connection are small (<20), so the full collect is cheap.
+      const subCalendarRows: Doc<"calendarSubCalendars">[] = await ctx.runQuery(
+        internal.calendars.db.getSubCalendarsForConnection.getSubCalendarsForConnection,
+        { connectionId },
+      );
+      const subCalendarsByExternalId = new Map(subCalendarRows.map((row) => [row.externalId, row]));
+
       // Cancelled events are tombstones — they should be removed from the
       // store, not expanded into recurring instances. Expand only live
       // events; carry cancellations through as-is so their externalIds
@@ -121,20 +130,16 @@ export function createCalendarService(providers: CalendarProviderRegistry) {
 
       const groups = new Map<string, IncomingEvent[]>();
       for (const event of expanded) {
-        if (event.subCalendarId === undefined) continue;
         const list = groups.get(event.subCalendarId);
         if (list) list.push(event);
         else groups.set(event.subCalendarId, [event]);
       }
 
       for (const [externalSubCalendarId, eventsInGroup] of groups) {
-        const subCalendar: Doc<"calendarSubCalendars"> | null = await ctx.runQuery(
-          internal.calendars.db.getSubCalendarByExternalId.getSubCalendarByExternalId,
-          { connectionId, externalId: externalSubCalendarId },
-        );
         // Sub-calendar not enabled for this connection — drop its events
         // silently. The user has either deselected this calendar or
         // never enabled it.
+        const subCalendar = subCalendarsByExternalId.get(externalSubCalendarId);
         if (!subCalendar) continue;
 
         const liveEvents = eventsInGroup
@@ -152,6 +157,9 @@ export function createCalendarService(providers: CalendarProviderRegistry) {
                 .map((event) => event.externalId)
             : undefined;
 
+        // writeEvents is the #120 module — replaces every event for this
+        // sub-calendar within the sync window (upsert + window-prune)
+        // and removes anything in deletedExternalIds.
         await ctx.runMutation(internal.calendars.db.writeEvents.writeEvents, {
           connectionId,
           subCalendarId: subCalendar._id,

@@ -9,6 +9,7 @@ const WEEK_MS = 7 * DAY_MS;
 
 const baseEvent: IncomingEvent = {
   externalId: "event-123",
+  subCalendarId: "primary",
   title: "Standup",
   description: "Daily team sync",
   location: "Zoom",

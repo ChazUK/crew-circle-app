@@ -1,6 +1,11 @@
 export type IncomingEvent = {
   externalId: string;
-  subCalendarId?: string;
+  // Provider's raw sub-calendar identifier — required because the sync
+  // pipeline groups events by it and writes per-group. Providers must
+  // tag every event they emit with the sub-calendar it belongs to
+  // (iCal: the synthetic "default" sub-calendar; Google/Microsoft: the
+  // calendarId the event came from; Native: the device calendar id).
+  subCalendarId: string;
   uid?: string;
   recurrenceId?: number;
   title: string;
