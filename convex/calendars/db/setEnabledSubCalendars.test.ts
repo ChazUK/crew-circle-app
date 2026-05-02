@@ -234,6 +234,35 @@ describe("setEnabledSubCalendars", () => {
     expect(stillThere).not.toBeNull();
   });
 
+  test("dedupes selections by externalId so duplicates do not insert duplicate rows", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await insertUser(t, "owner");
+    const connectionId = await insertConnection(t, userId);
+
+    await t.mutation(internal.calendars.db.setEnabledSubCalendars.setEnabledSubCalendars, {
+      connectionId,
+      selections: [
+        { externalId: "work@example.com", label: "Work" },
+        { externalId: "work@example.com", label: "Work (duplicate)" },
+        { externalId: "personal@example.com", label: "Personal" },
+      ],
+    });
+
+    const rows = await t.run((ctx) =>
+      ctx.db
+        .query("calendarSubCalendars")
+        .withIndex("byConnection", (q) => q.eq("connectionId", connectionId))
+        .collect(),
+    );
+    expect(rows.map((r) => r.externalId).sort()).toEqual([
+      "personal@example.com",
+      "work@example.com",
+    ]);
+    // Last entry wins for the duplicated externalId.
+    const work = rows.find((r) => r.externalId === "work@example.com");
+    expect(work?.label).toBe("Work (duplicate)");
+  });
+
   test("performs both adds and removals in a single call", async () => {
     const t = convexTest(schema, modules);
     const userId = await insertUser(t, "owner");

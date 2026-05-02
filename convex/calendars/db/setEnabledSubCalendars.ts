@@ -26,10 +26,18 @@ export const setEnabledSubCalendars = internalMutation({
       .withIndex("byConnection", (q) => q.eq("connectionId", connectionId))
       .collect();
 
-    const existingByExternalId = new Map(existing.map((row) => [row.externalId, row]));
-    const selectedExternalIds = new Set(selections.map((s) => s.externalId));
+    // Dedupe selections by externalId — the table has no uniqueness
+    // constraint on (connectionId, externalId), so duplicates in the
+    // caller's input would otherwise insert duplicate sub-calendar rows.
+    // Last entry wins per externalId.
+    const dedupedSelections = Array.from(
+      new Map(selections.map((s) => [s.externalId, s])).values(),
+    );
 
-    const toAdd = selections.filter((s) => !existingByExternalId.has(s.externalId));
+    const existingByExternalId = new Map(existing.map((row) => [row.externalId, row]));
+    const selectedExternalIds = new Set(dedupedSelections.map((s) => s.externalId));
+
+    const toAdd = dedupedSelections.filter((s) => !existingByExternalId.has(s.externalId));
     const toRemove = existing.filter((row) => !selectedExternalIds.has(row.externalId));
 
     await Promise.all([
