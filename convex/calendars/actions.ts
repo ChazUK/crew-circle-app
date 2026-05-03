@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { action } from "../_generated/server";
 import { requireOwnedConnection } from "./auth/requireOwnedConnection";
 import { calendarService } from "./service/registry";
+import { syncAfterConnect } from "./syncAfterConnect";
 import { runSyncWithRetry } from "./syncWithRetry";
 
 export const disconnect = action({
@@ -29,5 +30,21 @@ export const listSubCalendars = action({
   args: { connectionId: v.id("calendarConnections") },
   handler: async (ctx, args) => {
     return await calendarService.listSubCalendars(ctx, args.connectionId);
+  },
+});
+
+export const setEnabledSubCalendars = action({
+  args: {
+    connectionId: v.id("calendarConnections"),
+    selections: v.array(
+      v.object({
+        externalId: v.string(),
+        label: v.string(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    await calendarService.setEnabledSubCalendars(ctx, args.connectionId, args.selections);
+    await syncAfterConnect(ctx, args.connectionId);
   },
 });
