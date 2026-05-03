@@ -4,11 +4,11 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
-// Every 15 minutes, fan out a sync job per Google / iCal calendar connection.
-// Apple calendars are skipped (events live on-device; the client pushes them).
-crons.interval(
+// Fan out a sync job per non-native calendar connection.
+// Native (on-device) connections are pushed by the client and skipped here.
+crons.cron(
   "sync external calendars",
-  { minutes: 15 },
+  "*/15 * * * *",
   internal.calendars.scheduler.syncAllConnections,
   {},
 );
