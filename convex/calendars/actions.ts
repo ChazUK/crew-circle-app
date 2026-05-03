@@ -44,7 +44,13 @@ export const setEnabledSubCalendars = action({
     ),
   },
   handler: async (ctx, args) => {
+    const { connection } = await requireOwnedConnection(ctx, args.connectionId);
     await calendarService.setEnabledSubCalendars(ctx, args.connectionId, args.selections);
-    await syncAfterConnect(ctx, args.connectionId);
+    // Native connections sync from the device, not the server — scheduling
+    // a server-side sync would just hit sync.ts's native guard and burn
+    // through the retry budget.
+    if (connection.provider !== "native") {
+      await syncAfterConnect(ctx, args.connectionId);
+    }
   },
 });
