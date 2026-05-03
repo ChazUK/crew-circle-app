@@ -4,6 +4,7 @@ import { listNativeSubCalendars } from "./listNativeSubCalendars";
 
 vi.mock("expo-calendar", () => ({
   getCalendarsAsync: vi.fn(),
+  EntityTypes: { EVENT: "event", REMINDER: "reminder" },
 }));
 
 import * as Calendar from "expo-calendar";
@@ -35,5 +36,11 @@ describe("listNativeSubCalendars", () => {
     ]);
     const result = await listNativeSubCalendars();
     expect(result[0].primary).toBe(false);
+  });
+
+  test("requests only event calendars to avoid reminders permission on iOS", async () => {
+    mockGetCalendars.mockResolvedValue([]);
+    await listNativeSubCalendars();
+    expect(mockGetCalendars).toHaveBeenCalledWith(Calendar.EntityTypes.EVENT);
   });
 });
