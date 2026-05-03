@@ -161,6 +161,8 @@ export function CalendarManagementSheet({ isOpen, onClose }: Props) {
       } else {
         await syncNowAction({ connectionId: connection._id });
       }
+    } catch (err) {
+      console.error("[CalendarManagementSheet] sync failed", err);
     } finally {
       setSyncingIds((prev) => {
         const next = new Set(prev);
