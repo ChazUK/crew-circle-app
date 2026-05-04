@@ -3,8 +3,8 @@ import { describe, expect, test } from "vitest";
 import { normalizeICalUrl } from "./normalizeICalUrl";
 
 describe("normalizeICalUrl", () => {
-  test("rewrites webcal:// to https://", () => {
-    expect(normalizeICalUrl("webcal://example.com/feed.ics")).toBe("https://example.com/feed.ics");
+  test("rewrites webcal:// to http://", () => {
+    expect(normalizeICalUrl("webcal://example.com/feed.ics")).toBe("http://example.com/feed.ics");
   });
 
   test("rewrites webcals:// to https://", () => {
@@ -12,7 +12,8 @@ describe("normalizeICalUrl", () => {
   });
 
   test("treats the scheme prefix case-insensitively", () => {
-    expect(normalizeICalUrl("WEBCAL://example.com/feed.ics")).toBe("https://example.com/feed.ics");
+    expect(normalizeICalUrl("WEBCAL://example.com/feed.ics")).toBe("http://example.com/feed.ics");
+    expect(normalizeICalUrl("WEBCALS://example.com/feed.ics")).toBe("https://example.com/feed.ics");
   });
 
   test("leaves https:// URLs unchanged", () => {
@@ -25,12 +26,15 @@ describe("normalizeICalUrl", () => {
 
   test("trims surrounding whitespace", () => {
     expect(normalizeICalUrl("  webcal://example.com/feed.ics  ")).toBe(
-      "https://example.com/feed.ics",
+      "http://example.com/feed.ics",
     );
   });
 
   test("preserves query strings and ports when rewriting", () => {
     expect(normalizeICalUrl("webcal://example.com:8443/feed.ics?token=abc")).toBe(
+      "http://example.com:8443/feed.ics?token=abc",
+    );
+    expect(normalizeICalUrl("webcals://example.com:8443/feed.ics?token=abc")).toBe(
       "https://example.com:8443/feed.ics?token=abc",
     );
   });

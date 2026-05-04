@@ -118,8 +118,8 @@ export const connectIcal = action({
   },
   handler: async (ctx, args): Promise<{ connectionId: Id<"calendarConnections"> }> => {
     // The connect form advertises Webcal support — webcal:// and webcals://
-    // are subscription-scheme hints, not real wire protocols, so rewrite to
-    // https before validation and storage.
+    // are subscription-scheme hints, not real wire protocols. Rewrite to
+    // http:// and https:// respectively before validation and storage.
     const url = normalizeICalUrl(args.url);
     const validation = await validateICalUrl(url);
     if (!validation.valid) {
