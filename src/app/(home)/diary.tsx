@@ -9,6 +9,7 @@ import { ScrollView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CalendarManagementSheet } from "@/components/calendars/CalendarManagementSheet";
+import { DiaryEventList } from "@/components/calendars/DiaryEventList";
 import { GearIcon } from "@/components/ui/icons/GearIcon";
 
 export default function Diary() {
@@ -125,9 +126,8 @@ export default function Diary() {
             </Pressable>
           )}
 
-          <View className="mt-4 px-4">
-            <Text className="text-sm text-foreground/60">{format(selectedDate, "EEEE")}</Text>
-            <Text className="text-sm text-foreground/60">{format(selectedDate, "d MMMM")}</Text>
+          <View className="mt-4">
+            <DiaryEventList selectedDate={selectedDate} />
           </View>
         </View>
       </ScrollView>
