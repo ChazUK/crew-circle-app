@@ -80,8 +80,13 @@ export function GoogleConnectFlow({ onBack }: Props) {
   };
 
   const handleConfirm = async (selected: { externalId: string; label: string }[]) => {
-    await confirm(selected);
-    onBack();
+    try {
+      await confirm(selected);
+      onBack();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save calendar selection");
+      setStep("idle");
+    }
   };
 
   if (step === "picking-subcalendars" && connectionId !== null) {
