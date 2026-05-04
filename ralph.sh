@@ -295,6 +295,16 @@ release_issue() {
   gh issue edit "$number" --remove-label "$CLAIMED_LABEL" --repo "$REPO" 2>/dev/null || true
 }
 
+# Fetch issue comments as a formatted Markdown block. Empty if there are none.
+fetch_issue_comments() {
+  local number="$1"
+  gh issue view "$number" --repo "$REPO" --json comments \
+    --jq '.comments
+      | map("### Comment by @\(.author.login) at \(.createdAt)\n\n\(.body)")
+      | join("\n\n---\n\n")
+    ' 2>/dev/null || true
+}
+
 # Called when unresolved "Blocked by #N" dependencies are detected before the agent runs.
 mark_dependency_blocked() {
   local number="$1"
@@ -324,6 +334,21 @@ build_prompt() {
   local issue_title="$2"
   local issue_body="$3"
   local branch="$4"
+  local issue_comments="$5"
+
+  local comments_section=""
+  if [[ -n "$issue_comments" ]]; then
+    comments_section="
+---
+
+## Issue Comments
+
+The following comments have been posted on this issue. They may contain
+clarifications, corrections, or additional requirements that override or
+supplement the issue body — read them carefully before implementing.
+
+${issue_comments}"
+  fi
 
   local prd_section=""
   if [[ -n "$PRD_NUMBER" ]]; then
@@ -347,6 +372,7 @@ issue below, get all checks green, open a pull request, and output a completion 
 ## Issue #${issue_number}: ${issue_title}
 
 ${issue_body}
+${comments_section}
 
 ---
 ${prd_section}
@@ -665,9 +691,16 @@ agent_loop() {
     # Without this, the branch lives in a limbo state until the agent's first push.
     git -C "$worktree" branch --set-upstream-to=origin/main "$branch" 2>/dev/null || true
 
+    # ── Fetch issue comments for additional context ────────────
+    local issue_comments
+    issue_comments=$(fetch_issue_comments "$issue_number")
+    if [[ -n "$issue_comments" ]]; then
+      agent_log "$agent_id" "fetched comments for #$issue_number"
+    fi
+
     # ── Build the prompt ───────────────────────────────────────
     local prompt_file="$RALPH_DIR/prompt-agent${agent_id}-issue${issue_number}.txt"
-    build_prompt "$issue_number" "$issue_title" "$issue_body" "$branch" > "$prompt_file"
+    build_prompt "$issue_number" "$issue_title" "$issue_body" "$branch" "$issue_comments" > "$prompt_file"
 
     local log_file="$LOG_DIR/agent-${agent_id}-issue-${issue_number}.log"
     agent_log "$agent_id" "running claude on #$issue_number... (log: $log_file)"
