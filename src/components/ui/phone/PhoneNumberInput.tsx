@@ -27,9 +27,8 @@ type Props = {
 function getDeviceCountry(): string {
   try {
     const locale = Intl.DateTimeFormat().resolvedOptions().locale;
-    const parts = locale.split("-");
-    const region = parts[parts.length - 1];
-    if (region && /^[A-Z]{2}$/.test(region)) return region;
+    const region = new Intl.Locale(locale).region;
+    if (region && /^[A-Za-z]{2}$/.test(region)) return region.toUpperCase();
     return "GB";
   } catch {
     return "GB";
