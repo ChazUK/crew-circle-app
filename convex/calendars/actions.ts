@@ -89,3 +89,22 @@ export const listSubCalendars = action({
     return await calendarService.listSubCalendars(ctx, args.connectionId);
   },
 });
+
+export const syncNativeOnOpen = action({
+  args: {},
+  handler: async (
+    ctx,
+  ): Promise<{ connectionId: Id<"calendarConnections">; nativeCalendarIds: string[] }[]> => {
+    return await calendarService.syncNativeOnOpen(ctx);
+  },
+});
+
+export const setEnabledSubCalendars = action({
+  args: {
+    connectionId: v.id("calendarConnections"),
+    selections: v.array(v.object({ externalId: v.string(), label: v.string() })),
+  },
+  handler: async (ctx, args) => {
+    await calendarService.setEnabledSubCalendars(ctx, args.connectionId, args.selections);
+  },
+});
