@@ -10,12 +10,15 @@ export const upsertUser = async (
     firstName?: string;
     lastName?: string;
     profilePictureUrl?: string;
+    phone?: string;
   },
 ) => {
   const existing = await getUserByExternalId(ctx, args.externalAuthId);
   if (existing) return existing._id;
+  const { phone, ...rest } = args;
   return ctx.db.insert("users", {
-    ...args,
+    ...rest,
+    ...(phone ? { phone } : {}),
     hasCompletedOnboarding: false,
     isPublic: false,
   });

@@ -12,6 +12,7 @@ export const createUser = (
     firstName?: string;
     lastName?: string;
     profilePictureUrl?: string;
+    phone?: string;
   },
 ) => upsertUser(ctx, args);
 
@@ -19,6 +20,7 @@ export const updateUser = async (
   ctx: MutationCtx,
   {
     externalAuthId,
+    phone,
     ...fields
   }: {
     externalAuthId: string;
@@ -26,6 +28,7 @@ export const updateUser = async (
     firstName?: string;
     lastName?: string;
     profilePictureUrl?: string;
+    phone?: string;
   },
 ) => {
   const user = await getUserByExternalId(ctx, externalAuthId);
@@ -35,8 +38,11 @@ export const updateUser = async (
   const updates = Object.fromEntries(
     Object.entries(fields).filter(([, value]) => value !== undefined),
   );
-
   await ctx.db.patch(user._id, updates);
+
+  if (phone !== undefined) {
+    await ctx.db.patch(user._id, { phone: phone === "" ? undefined : phone });
+  }
 
   return user._id;
 };

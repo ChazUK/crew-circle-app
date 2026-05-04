@@ -10,6 +10,7 @@ export const userCreated = internalMutation({
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     profilePictureUrl: v.optional(v.string()),
+    phone: v.optional(v.string()),
   },
   handler: (ctx, args) => createUser(ctx, args),
 });
@@ -21,6 +22,7 @@ export const userUpdated = internalMutation({
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     profilePictureUrl: v.optional(v.string()),
+    phone: v.optional(v.string()),
   },
   handler: (ctx, args) => updateUser(ctx, args),
 });
