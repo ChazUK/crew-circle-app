@@ -1,7 +1,8 @@
-import { Button, Card, FieldError, InputOTP } from "heroui-native";
+import { Button, Card, FieldError } from "heroui-native";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
+import { VerificationCodeInput } from "@/components/ui/phone/VerificationCodeInput";
 import { useCountdown } from "@/hooks/useCountdown";
 
 type Props = {
@@ -9,7 +10,6 @@ type Props = {
   subtitle: string;
   value: string;
   onChange: (value: string) => void;
-  onBlur: () => void;
   onSubmit: () => void;
   isLoading: boolean;
   isDisabled: boolean;
@@ -23,7 +23,6 @@ export function VerifyCodeScreen({
   subtitle,
   value,
   onChange,
-  onBlur,
   onSubmit,
   isLoading,
   isDisabled,
@@ -41,27 +40,15 @@ export function VerifyCodeScreen({
       </View>
 
       <Card className="gap-4 mx-4">
-        <Card.Body className="gap-4 items-center">
-          <InputOTP
-            maxLength={6}
+        <Card.Body className="gap-4">
+          <VerificationCodeInput
             value={value}
             onChange={onChange}
-            onBlur={onBlur}
-            isInvalid={!!error}
             onComplete={onSubmit}
-          >
-            <InputOTP.Group>
-              <InputOTP.Slot index={0} />
-              <InputOTP.Slot index={1} />
-              <InputOTP.Slot index={2} />
-            </InputOTP.Group>
-            <InputOTP.Separator />
-            <InputOTP.Group>
-              <InputOTP.Slot index={3} />
-              <InputOTP.Slot index={4} />
-              <InputOTP.Slot index={5} />
-            </InputOTP.Group>
-          </InputOTP>
+            disabled={isDisabled}
+            isInvalid={!!error}
+            autoFocus
+          />
         </Card.Body>
 
         <Card.Footer className="gap-3 flex-col">
