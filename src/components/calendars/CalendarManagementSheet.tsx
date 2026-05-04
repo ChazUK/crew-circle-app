@@ -9,10 +9,10 @@ import { Text, View } from "react-native";
 
 import { fetchNativeEvents } from "@/lib/calendars/fetchNativeEvents";
 
+import { GoogleConnectFlow } from "./connect/GoogleConnectFlow";
 import { ICalConnectFlow } from "./connect/ICalConnectFlow";
-import { GoogleCalendarConnectFlow } from "./GoogleCalendarConnectFlow";
-import { MicrosoftCalendarConnectFlow } from "./MicrosoftCalendarConnectFlow";
-import { NativeCalendarConnectFlow } from "./NativeCalendarConnectFlow";
+import { MicrosoftConnectFlow } from "./connect/MicrosoftConnectFlow";
+import { NativeConnectFlow } from "./connect/NativeConnectFlow";
 
 export type ConnectionRow = {
   _id: Id<"calendarConnections">;
@@ -192,13 +192,13 @@ export function CalendarAddSection({ onSelectProvider }: CalendarAddSectionProps
 function renderConnectFlow(step: ActiveStep, onBack: () => void) {
   switch (step) {
     case "google":
-      return <GoogleCalendarConnectFlow onBack={onBack} />;
+      return <GoogleConnectFlow onBack={onBack} />;
     case "microsoft":
-      return <MicrosoftCalendarConnectFlow onBack={onBack} />;
+      return <MicrosoftConnectFlow onBack={onBack} />;
     case "ical":
       return <ICalConnectFlow onBack={onBack} />;
     case "native":
-      return <NativeCalendarConnectFlow onBack={onBack} />;
+      return <NativeConnectFlow onBack={onBack} />;
   }
 }
 
