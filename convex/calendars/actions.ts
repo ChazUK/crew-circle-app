@@ -6,6 +6,8 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { action } from "../_generated/server";
 import { requireOwnedConnection } from "./auth/requireOwnedConnection";
+import { normalizeICalUrl } from "./domain/normalizeICalUrl";
+import { validateICalUrl } from "./domain/validateICalUrl";
 import { calendarService } from "./service/registry";
 import { runSyncWithRetry } from "./syncWithRetry";
 
@@ -109,6 +111,50 @@ export const listSubCalendars = action({
   },
 });
 
+<<<<<<< feat/150-feat-calendars---ical-connect-flow-ui
+export const setEnabledSubCalendars = action({
+  args: {
+    connectionId: v.id("calendarConnections"),
+    selections: v.array(
+      v.object({
+        externalId: v.string(),
+        label: v.string(),
+      }),
+    ),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    await requireOwnedConnection(ctx, args.connectionId);
+    await ctx.runMutation(internal.calendars.db.setEnabledSubCalendars.setEnabledSubCalendars, {
+      connectionId: args.connectionId,
+      selections: args.selections,
+    });
+  },
+});
+
+export const connectIcal = action({
+  args: {
+    url: v.string(),
+    label: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ connectionId: Id<"calendarConnections"> }> => {
+    // The connect form advertises Webcal support — webcal:// and webcals://
+    // are subscription-scheme hints, not real wire protocols. Rewrite to
+    // http:// and https:// respectively before validation and storage.
+    const url = normalizeICalUrl(args.url);
+    const validation = await validateICalUrl(url);
+    if (!validation.valid) {
+      if (validation.reason === "unreachable") {
+        throw new Error("ICAL_UNREACHABLE");
+      }
+      throw new Error("ICAL_INVALID");
+    }
+    const connectionId = await calendarService.connect(ctx, {
+      provider: "ical",
+      url,
+      label: args.label,
+    });
+    return { connectionId };
+=======
 export const syncNativeOnOpen = action({
   args: {},
   handler: async (
@@ -125,5 +171,6 @@ export const setEnabledSubCalendars = action({
   },
   handler: async (ctx, args) => {
     await calendarService.setEnabledSubCalendars(ctx, args.connectionId, args.selections);
+>>>>>>> main
   },
 });
