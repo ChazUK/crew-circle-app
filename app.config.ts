@@ -24,6 +24,7 @@ export default {
       bundleIdentifier: "com.crewcircle.crewcircleapp",
       usesAppleSignIn: true,
       infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
         NSPhotoLibraryUsageDescription:
           "CrewCircle needs access to your photo library to upload a profile photo.",
         NSCameraUsageDescription: "CrewCircle needs access to your camera to take a profile photo.",
