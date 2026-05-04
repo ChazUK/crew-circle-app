@@ -29,12 +29,24 @@ export async function syncNativeConnections(
   uploadEvents: UploadNativeEvents,
 ): Promise<void> {
   const window = currentSyncWindow();
+  const errors: Error[] = [];
   for (const { connectionId, nativeCalendarIds } of connections) {
     try {
       const events = await fetchNativeEvents(nativeCalendarIds, window);
       await uploadEvents(connectionId, events);
     } catch (err) {
-      console.error("[syncNativeConnections] sync failed for connection", connectionId, err);
+      // Don't abort siblings on a single connection's failure — collect
+      // and rethrow at the end so the caller (background-fetch) can
+      // signal Failed to the OS scheduler instead of NewData.
+      const error = err instanceof Error ? err : new Error(String(err));
+      console.error("[syncNativeConnections] sync failed for connection", connectionId, error);
+      errors.push(error);
     }
+  }
+  if (errors.length > 0) {
+    throw new AggregateError(
+      errors,
+      `syncNativeConnections: ${errors.length} of ${connections.length} connection(s) failed`,
+    );
   }
 }
