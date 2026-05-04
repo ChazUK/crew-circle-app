@@ -111,23 +111,22 @@ export const listSubCalendars = action({
   },
 });
 
-<<<<<<< feat/150-feat-calendars---ical-connect-flow-ui
+export const syncNativeOnOpen = action({
+  args: {},
+  handler: async (
+    ctx,
+  ): Promise<{ connectionId: Id<"calendarConnections">; nativeCalendarIds: string[] }[]> => {
+    return await calendarService.syncNativeOnOpen(ctx);
+  },
+});
+
 export const setEnabledSubCalendars = action({
   args: {
     connectionId: v.id("calendarConnections"),
-    selections: v.array(
-      v.object({
-        externalId: v.string(),
-        label: v.string(),
-      }),
-    ),
+    selections: v.array(v.object({ externalId: v.string(), label: v.string() })),
   },
-  handler: async (ctx, args): Promise<void> => {
-    await requireOwnedConnection(ctx, args.connectionId);
-    await ctx.runMutation(internal.calendars.db.setEnabledSubCalendars.setEnabledSubCalendars, {
-      connectionId: args.connectionId,
-      selections: args.selections,
-    });
+  handler: async (ctx, args) => {
+    await calendarService.setEnabledSubCalendars(ctx, args.connectionId, args.selections);
   },
 });
 
@@ -154,23 +153,5 @@ export const connectIcal = action({
       label: args.label,
     });
     return { connectionId };
-=======
-export const syncNativeOnOpen = action({
-  args: {},
-  handler: async (
-    ctx,
-  ): Promise<{ connectionId: Id<"calendarConnections">; nativeCalendarIds: string[] }[]> => {
-    return await calendarService.syncNativeOnOpen(ctx);
-  },
-});
-
-export const setEnabledSubCalendars = action({
-  args: {
-    connectionId: v.id("calendarConnections"),
-    selections: v.array(v.object({ externalId: v.string(), label: v.string() })),
-  },
-  handler: async (ctx, args) => {
-    await calendarService.setEnabledSubCalendars(ctx, args.connectionId, args.selections);
->>>>>>> main
   },
 });
