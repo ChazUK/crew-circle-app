@@ -19,8 +19,23 @@ async function makeTestWithUser() {
     ctx.db.insert("users", {
       externalAuthId: identity.subject,
       email: "me@example.com",
-      hasCompletedOnboarding: true,
+      hasCompletedOnboarding: false,
       isPublic: false,
+      phone: "+447700000000",
+    }),
+  );
+  return t;
+}
+
+async function makeTestUserWithPhone(phone: string | undefined) {
+  const t = convexTest(schema, modules);
+  await t.run((ctx) =>
+    ctx.db.insert("users", {
+      externalAuthId: identity.subject,
+      email: "me@example.com",
+      hasCompletedOnboarding: false,
+      isPublic: false,
+      ...(phone !== undefined && { phone }),
     }),
   );
   return t;
@@ -65,6 +80,46 @@ describe("completeOnboarding string length validation", () => {
       lastName: "Smith",
       userType: "crew",
     });
+  });
+});
+
+describe("completeOnboarding phone guard", () => {
+  test("throws when user has no phone set", async () => {
+    const t = await makeTestUserWithPhone(undefined);
+    await expect(
+      t.withIdentity(identity).mutation(api.users.mutations.completeOnboarding, {
+        firstName: "Alice",
+        lastName: "Smith",
+        userType: "crew",
+      }),
+    ).rejects.toThrow("Cannot complete onboarding: phone is not set.");
+  });
+
+  test("throws when user phone is empty string", async () => {
+    const t = await makeTestUserWithPhone("");
+    await expect(
+      t.withIdentity(identity).mutation(api.users.mutations.completeOnboarding, {
+        firstName: "Alice",
+        lastName: "Smith",
+        userType: "crew",
+      }),
+    ).rejects.toThrow("Cannot complete onboarding: phone is not set.");
+  });
+
+  test("succeeds when user has a phone set", async () => {
+    const t = await makeTestUserWithPhone("+447700000000");
+    await t.withIdentity(identity).mutation(api.users.mutations.completeOnboarding, {
+      firstName: "Alice",
+      lastName: "Smith",
+      userType: "crew",
+    });
+    const user = await t.run((ctx) =>
+      ctx.db
+        .query("users")
+        .withIndex("byExternalAuthId", (q) => q.eq("externalAuthId", identity.subject))
+        .unique(),
+    );
+    expect(user?.hasCompletedOnboarding).toBe(true);
   });
 });
 

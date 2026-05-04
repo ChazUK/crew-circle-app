@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
 import { mutation } from "../_generated/server";
@@ -35,7 +35,6 @@ export const completeOnboarding = mutation({
   args: {
     firstName: v.string(),
     lastName: v.string(),
-    phone: v.optional(v.string()),
     city: v.optional(v.string()),
     userType: v.union(v.literal("crew"), v.literal("production-manager")),
     departments: v.optional(v.array(v.string())),
@@ -47,12 +46,15 @@ export const completeOnboarding = mutation({
     const user = await getUserByExternalId(ctx, identity.subject);
     if (!user) throw new Error("User not found");
 
+    if (!user.phone || user.phone === "") {
+      throw new ConvexError("Cannot complete onboarding: phone is not set.");
+    }
+
     parseOrConvexError(completeOnboardingSchema, args);
 
     await ctx.db.patch(user._id, {
       firstName: args.firstName,
       lastName: args.lastName,
-      ...(args.phone && { phone: args.phone }),
       ...(args.city && { city: args.city }),
       userType: args.userType,
       ...(args.departments?.[0] && { department: args.departments[0] }),
