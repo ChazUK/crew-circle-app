@@ -472,7 +472,7 @@ Do NOT commit: \`progress.txt\`, \`.env\` files, secrets, debug code, or \`conso
 
 ### Step 6 — Open a pull request
 \`\`\`bash
-git push origin ${branch}
+git push -u origin ${branch}
 gh pr create \\
   --repo ${REPO} \\
   --base main \\
@@ -659,6 +659,11 @@ agent_loop() {
     if ! git -C "$SCRIPT_DIR" worktree add -b "$branch" "$worktree" origin/main 2>/dev/null; then
       git -C "$SCRIPT_DIR" worktree add -b "$branch" "$worktree" main
     fi
+
+    # Set the new branch's upstream to origin/main so `git status`, `git pull`,
+    # and the eventual `git checkout` after worktree removal all behave as expected.
+    # Without this, the branch lives in a limbo state until the agent's first push.
+    git -C "$worktree" branch --set-upstream-to=origin/main "$branch" 2>/dev/null || true
 
     # ── Build the prompt ───────────────────────────────────────
     local prompt_file="$RALPH_DIR/prompt-agent${agent_id}-issue${issue_number}.txt"
