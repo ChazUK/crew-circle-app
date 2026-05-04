@@ -8,7 +8,8 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { HeroUINativeConfig, HeroUINativeProvider } from "heroui-native";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { AppErrorBoundary } from "@/components/ui/AppErrorBoundary";
@@ -93,20 +94,72 @@ function RootNavigator() {
     }
   }, [isLoading, isAuthenticated, isUserReady, currentUser]);
 
-  // Refresh native (on-device) calendar connections whenever the app comes
-  // back to the foreground. The server-side debounce in `syncNativeOnOpen`
-  // skips connections synced within the last 60 seconds, so quick app
-  // re-opens don't hammer the device store.
+  // Refresh native (on-device) calendar connections on launch and whenever
+  // the app returns to the foreground — picks up events the user added in
+  // the device calendar app while we were backgrounded. The server-side
+  // debounce in `syncNativeOnOpen` skips connections synced within the last
+  // 60 seconds, so quick app re-opens don't hammer the device store.
+  // When the app returns from background, the Convex WebSocket is still
+  // reconnecting — the first action call races the reconnect and fails with
+  // "Connection lost while action was in flight". Retry on that specific
+  // error with backoff so the foreground sync survives the reconnect window.
+  const runNativeOnOpenSync = useCallback(
+    async (trigger: "launch" | "foreground") => {
+      const isConnectionLost = (err: unknown) =>
+        err instanceof Error && err.message.includes("Connection lost");
+      const delays = [400, 800, 1600];
+      const startedAt = Date.now();
+      console.log(`[RootNavigator] native sync starting (trigger=${trigger})`);
+      for (let attempt = 0; attempt <= delays.length; attempt++) {
+        try {
+          const connections = await syncNativeOnOpenAction({});
+          console.log(
+            `[RootNavigator] native sync: server returned ${connections.length} connection(s) to sync (attempt=${attempt + 1})`,
+          );
+          let uploadedConnections = 0;
+          let uploadedEvents = 0;
+          await syncNativeConnections(connections, async (connectionId, events) => {
+            console.log(
+              `[RootNavigator] native sync: uploading ${events.length} event(s) for connection ${connectionId}`,
+            );
+            await uploadNativeEventsAction({ connectionId, events });
+            uploadedConnections += 1;
+            uploadedEvents += events.length;
+          });
+          console.log(
+            `[RootNavigator] native sync complete (trigger=${trigger}, connections=${uploadedConnections}, events=${uploadedEvents}, durationMs=${Date.now() - startedAt})`,
+          );
+          return;
+        } catch (err) {
+          if (!isConnectionLost(err) || attempt === delays.length) {
+            console.error(
+              `[RootNavigator] native sync failed (trigger=${trigger}, attempt=${attempt + 1})`,
+              err,
+            );
+            return;
+          }
+          console.warn(
+            `[RootNavigator] native sync: connection lost, retrying in ${delays[attempt]}ms (attempt=${attempt + 1})`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+        }
+      }
+    },
+    [syncNativeOnOpenAction, uploadNativeEventsAction],
+  );
+
   useEffect(() => {
     if (!isUserReady) return;
-    syncNativeOnOpenAction({})
-      .then((connections) =>
-        syncNativeConnections(connections, async (connectionId, events) => {
-          await uploadNativeEventsAction({ connectionId, events });
-        }),
-      )
-      .catch((err) => console.error("[RootNavigator] native on-open sync failed", err));
-  }, [isUserReady, syncNativeOnOpenAction, uploadNativeEventsAction]);
+    runNativeOnOpenSync("launch");
+
+    let previousState = AppState.currentState;
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      console.log(`[RootNavigator] AppState change: ${previousState} -> ${nextState}`);
+      if (previousState !== "active" && nextState === "active") runNativeOnOpenSync("foreground");
+      previousState = nextState;
+    });
+    return () => subscription.remove();
+  }, [isUserReady, runNativeOnOpenSync]);
 
   // The background-fetch cron is opt-in: opening the app already triggers a
   // sync, so the cron is only valuable when the app is killed for long
