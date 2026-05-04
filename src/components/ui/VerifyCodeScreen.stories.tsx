@@ -8,7 +8,6 @@ const meta = {
   args: {
     value: "",
     onChange: () => {},
-    onBlur: () => {},
     onSubmit: () => {},
     isLoading: false,
     isDisabled: false,

@@ -190,7 +190,6 @@ export default function Page() {
                       subtitle={subtitleByStrategy[secondFactorStrategy]}
                       value={field.state.value}
                       onChange={field.handleChange}
-                      onBlur={field.handleBlur}
                       onSubmit={() => verifyForm.handleSubmit()}
                       isLoading={!!isSubmitting}
                       isDisabled={!canSubmit || !!isSubmitting || fetchStatus === "fetching"}
@@ -235,7 +234,6 @@ export default function Page() {
                       subtitle="Enter the 6-digit code sent to your email"
                       value={field.state.value}
                       onChange={field.handleChange}
-                      onBlur={field.handleBlur}
                       onSubmit={() => verifyForm.handleSubmit()}
                       isLoading={!!isSubmitting}
                       isDisabled={!canSubmit || !!isSubmitting || fetchStatus === "fetching"}
