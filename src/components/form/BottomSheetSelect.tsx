@@ -1,7 +1,15 @@
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import {
+  BottomSheetFlatList,
+  BottomSheetFooter,
+  BottomSheetFooterProps,
+} from "@gorhom/bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScrollShadow, Select, useThemeColor } from "heroui-native";
-import { ReactNode } from "react";
+import { memo, ReactNode, useCallback, useMemo, useState } from "react";
+import { ListRenderItem, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { Search } from "./Search";
 
 export type SelectOption = {
   value: string;
@@ -14,10 +22,33 @@ type BottomSheetSelectProps<T extends SelectOption> = {
   disabled?: boolean;
   placeholder?: string;
   accessibilityLabel?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
   onChange?: (value: string) => void;
   renderTriggerValue?: (selected: T | undefined) => ReactNode;
   renderOptionContent?: (option: T) => ReactNode;
 };
+
+const FooterSearch = memo(function FooterSearch({
+  onChange,
+  placeholder,
+}: {
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  const [value, setValue] = useState("");
+  return (
+    <Search
+      value={value}
+      onChange={(next) => {
+        setValue(next);
+        onChange(next);
+      }}
+      placeholder={placeholder}
+      className="drop-shadow-lg"
+    />
+  );
+});
 
 export const BottomSheetSelect = <T extends SelectOption>({
   options,
@@ -25,13 +56,50 @@ export const BottomSheetSelect = <T extends SelectOption>({
   disabled = false,
   placeholder = "Choose an option",
   accessibilityLabel,
+  searchable = false,
+  searchPlaceholder = "Search...",
   onChange,
   renderTriggerValue,
   renderOptionContent,
 }: BottomSheetSelectProps<T>) => {
   const themeColorOverlay = useThemeColor("overlay");
+  const insets = useSafeAreaInsets();
+  const [searchValue, setSearchValue] = useState("");
 
   const selectedOption = options.find((option) => option.value === value);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable) return options;
+    const q = searchValue.trim().toLocaleLowerCase();
+    if (!q) return options;
+    return options.filter((option) => option.label.toLowerCase().includes(q));
+  }, [searchable, searchValue, options]);
+
+  const renderItem = useCallback<ListRenderItem<T>>(
+    ({ item }) => (
+      <Select.Item value={item.value} label={item.label}>
+        {renderOptionContent?.(item)}
+      </Select.Item>
+    ),
+    [renderOptionContent],
+  );
+
+  const keyExtractor = useCallback((item: T) => item.value, []);
+
+  const renderFooter = useCallback(
+    (props: BottomSheetFooterProps) => (
+      <BottomSheetFooter {...props} bottomInset={insets.bottom - 16}>
+        <View
+          className="px-8 py-4"
+          onStartShouldSetResponder={() => true}
+          onResponderTerminationRequest={() => false}
+        >
+          <FooterSearch onChange={setSearchValue} placeholder={searchPlaceholder} />
+        </View>
+      </BottomSheetFooter>
+    ),
+    [insets.bottom, searchPlaceholder],
+  );
 
   return (
     <Select
@@ -60,18 +128,20 @@ export const BottomSheetSelect = <T extends SelectOption>({
           enableDynamicSizing={false}
           enableOverDrag={false}
           contentContainerClassName="flex-1 h-full"
+          footerComponent={searchable ? renderFooter : undefined}
         >
           <ScrollShadow LinearGradientComponent={LinearGradient} color={themeColorOverlay}>
-            <BottomSheetScrollView
+            <BottomSheetFlatList
+              data={filteredOptions}
+              renderItem={renderItem}
+              keyExtractor={keyExtractor}
+              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={true}
-              contentContainerStyle={{ paddingBottom: 16 }}
-            >
-              {options.map((option) => (
-                <Select.Item key={option.value} value={option.value} label={option.label}>
-                  {renderOptionContent?.(option)}
-                </Select.Item>
-              ))}
-            </BottomSheetScrollView>
+              contentContainerStyle={{ paddingBottom: searchable ? 80 : 16 }}
+              initialNumToRender={20}
+              windowSize={10}
+              removeClippedSubviews
+            />
           </ScrollShadow>
         </Select.Content>
       </Select.Portal>

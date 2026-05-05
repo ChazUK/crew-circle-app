@@ -9,6 +9,21 @@ import { BottomSheetSelect, SelectOption } from "./BottomSheetSelect";
 
 type FruitOption = SelectOption & { emoji: string; color: string };
 
+const FRUIT_VARIETIES = [
+  "Red",
+  "Green",
+  "Yellow",
+  "Sweet",
+  "Sour",
+  "Wild",
+  "Fresh",
+  "Dried",
+  "Frozen",
+  "Organic",
+  "Heirloom",
+  "Tropical",
+];
+
 const FRUITS: FruitOption[] = [
   { value: "apple", label: "Apple", emoji: "🍎", color: "#e63946" },
   { value: "banana", label: "Banana", emoji: "🍌", color: "#f1c40f" },
@@ -24,6 +39,14 @@ const FRUITS: FruitOption[] = [
   { value: "strawberry", label: "Strawberry", emoji: "🍓", color: "#e91e63" },
   { value: "watermelon", label: "Watermelon", emoji: "🍉", color: "#ef5350" },
 ];
+
+const LONG_FRUITS: FruitOption[] = FRUIT_VARIETIES.flatMap((variety) =>
+  FRUITS.map((fruit) => ({
+    ...fruit,
+    value: `${variety.toLowerCase()}-${fruit.value}`,
+    label: `${variety} ${fruit.label}`,
+  })),
+);
 
 const meta = {
   title: "Form/BottomSheetSelect",
@@ -127,5 +150,47 @@ export const CustomPlaceholder: Story = {
   render: InteractiveRender,
   args: {
     placeholder: "What are you craving?",
+  },
+};
+
+export const Searchable: Story = {
+  render: InteractiveRender,
+  args: {
+    searchable: true,
+    searchPlaceholder: "Search fruits...",
+  },
+};
+
+export const SearchableLongList: Story = {
+  render: InteractiveRender,
+  args: {
+    options: LONG_FRUITS,
+    searchable: true,
+    searchPlaceholder: `Search ${LONG_FRUITS.length} fruits...`,
+  },
+};
+
+export const SearchableWithCustomContent: Story = {
+  render: InteractiveRender,
+  args: {
+    searchable: true,
+    searchPlaceholder: "Search fruits...",
+    renderOptionContent: (option) => (
+      <>
+        <View className="flex-row items-center gap-3 flex-1">
+          <View
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: option.color,
+            }}
+          />
+          <Select.ItemLabel />
+          <Text style={{ fontSize: 18 }}>{option.emoji}</Text>
+        </View>
+        <Select.ItemIndicator />
+      </>
+    ),
   },
 };
