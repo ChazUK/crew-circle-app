@@ -12,8 +12,7 @@ export function ProgressIndicator({ currentStep, totalSteps, className }: Props)
   const safeTotalSteps = Math.min(5, Math.max(1, Math.trunc(totalSteps)));
   const safeCurrentStep = Math.min(safeTotalSteps, Math.max(1, Math.trunc(currentStep)));
 
-  const accentColor = useThemeColor("accent");
-  const defaultColor = useThemeColor("default");
+  const [defaultColor, accentColor] = useThemeColor(["default", "accent"]);
 
   return (
     <View

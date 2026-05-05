@@ -20,6 +20,7 @@ export default {
       backgroundColor: "#232323",
     },
     ios: {
+      newArchEnabled: true,
       supportsTablet: true,
       bundleIdentifier: "com.crewcircle.crewcircleapp",
       usesAppleSignIn: true,
