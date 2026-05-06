@@ -4,17 +4,10 @@ import {
   BottomSheetFooterProps,
 } from "@gorhom/bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  Description,
-  InputGroup,
-  ScrollShadow,
-  Select,
-  Separator,
-  useThemeColor,
-} from "heroui-native";
+import { InputGroup, ScrollShadow, Select, Separator, useThemeColor } from "heroui-native";
 import parsePhoneNumberFromString, { CountryCode, getExampleNumber } from "libphonenumber-js";
 import examples from "libphonenumber-js/examples.mobile.json";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { ListRenderItem, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -28,9 +21,11 @@ type DialCodeOption = Country & {
   label: string;
 };
 
-type Normalized = {
-  e164: string | null;
-  isValid: boolean;
+type Props = {
+  value: string | null;
+  onChange: (value: string | null) => void;
+  onBlur?: () => void;
+  isInvalid?: boolean;
 };
 
 const DIAL_CODES: DialCodeOption[] = COUNTRIES.map((country) => ({
@@ -40,26 +35,47 @@ const DIAL_CODES: DialCodeOption[] = COUNTRIES.map((country) => ({
 }));
 
 const DEFAULT_DIAL_CODE =
-  DIAL_CODES.find((option) => option.code === getDeviceCountry()) || DIAL_CODES[0];
+  DIAL_CODES.find((option) => option.code === getDeviceCountry()) ?? DIAL_CODES[0];
 
-const PhoneNumberInput = () => {
-  const [phone, setPhone] = useState("");
+export const PhoneNumberInput = ({ value, onChange, onBlur, isInvalid }: Props) => {
+  const initial = useMemo(() => parseInitial(value), []);
+  const [national, setNational] = useState(initial.national);
+  const [dialCode, setDialCode] = useState<DialCodeOption>(initial.dialCode);
   const [searchValue, setSearchValue] = useState("");
-  const [normalized, setNormalized] = useState<Normalized>({ e164: null, isValid: false });
-  const [dialCode, setDialCode] = useState<DialCodeOption>(DEFAULT_DIAL_CODE);
   const themeColorOverlay = useThemeColor("overlay");
   const insets = useSafeAreaInsets();
-
-  useEffect(() => {
-    const next = normalize(phone, dialCode.code);
-    setNormalized(next);
-  }, [phone, dialCode]);
 
   const filteredOptions = useMemo(() => {
     const q = searchValue.trim().toLocaleLowerCase();
     if (!q) return DIAL_CODES;
     return DIAL_CODES.filter((option) => option.name.toLowerCase().includes(q));
   }, [searchValue]);
+
+  const emit = useCallback(
+    (nextNational: string, nextCountry: CountryCode) => {
+      onChange(toE164(nextNational, nextCountry));
+    },
+    [onChange],
+  );
+
+  const handleNationalChange = useCallback(
+    (next: string) => {
+      setNational(next);
+      emit(next, dialCode.code as CountryCode);
+    },
+    [dialCode, emit],
+  );
+
+  const handleDialCodeChange = useCallback(
+    (option: { value: string; label: string } | undefined) => {
+      if (!option) return;
+      const found = DIAL_CODES.find((d) => d.value === option.value);
+      if (!found) return;
+      setDialCode(found);
+      emit(national, found.code as CountryCode);
+    },
+    [national, emit],
+  );
 
   const renderItem = useCallback<ListRenderItem<DialCodeOption>>(
     ({ item }) => (
@@ -68,7 +84,7 @@ const PhoneNumberInput = () => {
           <CountryFlag iso2={item.code} size={20} />
           <Select.ItemLabel />
         </View>
-        <Text style={{ color: "#888" }}>{item.dialCode}</Text>
+        <Text className="text-muted">{item.dialCode}</Text>
         <Select.ItemIndicator />
       </Select.Item>
     ),
@@ -93,59 +109,51 @@ const PhoneNumberInput = () => {
   );
 
   return (
-    <View className="flex-1">
-      <InputGroup>
-        <InputGroup.Prefix className="flex-row">
-          <Select
-            presentation="bottom-sheet"
-            value={dialCode}
-            onValueChange={(value) => {
-              const found = DIAL_CODES.find((d) => d.value === value?.value);
-              if (found) setDialCode(found);
-            }}
-          >
-            <Select.Trigger variant="unstyled" className="flex-row items-center gap-1">
-              <CountryFlag iso2={dialCode.code} size={20} />
-              <Text className="text-sm font-medium text-foreground">{dialCode.dialCode}</Text>
-            </Select.Trigger>
-            <Select.Portal>
-              <Select.Overlay className="bg-black/50" />
-              <Select.Content
-                presentation="bottom-sheet"
-                snapPoints={["75%", "90%"]}
-                keyboardBehavior="extend"
-                enableDynamicSizing={false}
-                enableOverDrag={false}
-                contentContainerClassName="flex-1 h-full"
-                footerComponent={renderFooter}
-              >
-                <ScrollShadow LinearGradientComponent={LinearGradient} color={themeColorOverlay}>
-                  <BottomSheetFlatList
-                    data={filteredOptions}
-                    renderItem={renderItem}
-                    keyExtractor={keyExtractor}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={true}
-                    contentContainerStyle={{ paddingBottom: 80 }}
-                    initialNumToRender={20}
-                    windowSize={10}
-                    removeClippedSubviews
-                  />
-                </ScrollShadow>
-              </Select.Content>
-            </Select.Portal>
-          </Select>
-          <Separator orientation="vertical" className="h-5" />
-        </InputGroup.Prefix>
-        <InputGroup.Input
-          value={phone}
-          onChangeText={setPhone}
-          placeholder={phoneNumberPlaceholder(dialCode.code)}
-          keyboardType="phone-pad"
-        />
-      </InputGroup>
-      <Description>{JSON.stringify(normalized, null, 2)}</Description>
-    </View>
+    <InputGroup>
+      <InputGroup.Prefix className="flex-row">
+        <Select presentation="bottom-sheet" value={dialCode} onValueChange={handleDialCodeChange}>
+          <Select.Trigger variant="unstyled" className="flex-row items-center gap-1">
+            <CountryFlag iso2={dialCode.code} size={20} />
+            <Text className="text-sm font-medium text-foreground">{dialCode.dialCode}</Text>
+          </Select.Trigger>
+          <Select.Portal>
+            <Select.Overlay className="bg-black/50" />
+            <Select.Content
+              presentation="bottom-sheet"
+              snapPoints={["75%", "90%"]}
+              keyboardBehavior="extend"
+              enableDynamicSizing={false}
+              enableOverDrag={false}
+              contentContainerClassName="flex-1 h-full"
+              footerComponent={renderFooter}
+            >
+              <ScrollShadow LinearGradientComponent={LinearGradient} color={themeColorOverlay}>
+                <BottomSheetFlatList
+                  data={filteredOptions}
+                  renderItem={renderItem}
+                  keyExtractor={keyExtractor}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                  contentContainerStyle={{ paddingBottom: 80 }}
+                  initialNumToRender={20}
+                  windowSize={10}
+                  removeClippedSubviews
+                />
+              </ScrollShadow>
+            </Select.Content>
+          </Select.Portal>
+        </Select>
+        <Separator orientation="vertical" className="h-5" />
+      </InputGroup.Prefix>
+      <InputGroup.Input
+        value={national}
+        onChangeText={handleNationalChange}
+        onBlur={onBlur}
+        placeholder={phoneNumberPlaceholder(dialCode.code as CountryCode)}
+        keyboardType="phone-pad"
+        isInvalid={isInvalid}
+      />
+    </InputGroup>
   );
 };
 
@@ -170,6 +178,20 @@ const FooterSearch = memo(function FooterSearch({
   );
 });
 
+function parseInitial(value: string | null): { national: string; dialCode: DialCodeOption } {
+  if (!value) return { national: "", dialCode: DEFAULT_DIAL_CODE };
+  const parsed = parsePhoneNumberFromString(value);
+  if (!parsed?.country) return { national: "", dialCode: DEFAULT_DIAL_CODE };
+  const dialCode = DIAL_CODES.find((d) => d.code === parsed.country) ?? DEFAULT_DIAL_CODE;
+  return { national: parsed.formatNational(), dialCode };
+}
+
+function toE164(national: string, country: CountryCode): string | null {
+  if (!national) return null;
+  const phone = parsePhoneNumberFromString(national, country);
+  return phone?.isValid() ? phone.number : null;
+}
+
 function getDeviceCountry(): string {
   try {
     const locale = Intl.DateTimeFormat().resolvedOptions().locale;
@@ -181,23 +203,11 @@ function getDeviceCountry(): string {
   }
 }
 
-function normalize(national: string, country: string): Normalized {
-  if (!national || !country) return { e164: null, isValid: false };
-  const phone = parsePhoneNumberFromString(national, country as CountryCode);
-  if (phone?.isValid()) return { e164: phone.number, isValid: true };
-  return { e164: null, isValid: false };
-}
-
-function phoneNumberPlaceholder(country: string): string {
+function phoneNumberPlaceholder(country: CountryCode): string {
   try {
-    const example = getExampleNumber(
-      country as CountryCode,
-      examples as Parameters<typeof getExampleNumber>[1],
-    );
+    const example = getExampleNumber(country, examples as Parameters<typeof getExampleNumber>[1]);
     return example?.formatNational() ?? "";
   } catch {
     return "";
   }
 }
-
-export default PhoneNumberInput;
