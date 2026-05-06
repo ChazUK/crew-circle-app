@@ -24,10 +24,33 @@ type BottomSheetSelectProps<T extends SelectOption> = {
   accessibilityLabel?: string;
   searchable?: boolean;
   searchPlaceholder?: string;
+  /**
+   * Predicate used to filter options against the search query.
+   *
+   * `query` is already trimmed and lower-cased, and empty queries short-circuit
+   * before this is called — your predicate never receives `""`.
+   *
+   * Defaults to a case-insensitive `label.includes(query)` match. Override to
+   * search across other fields, e.g. a country dial code:
+   *
+   * ```ts
+   * const filterCountry = useCallback(
+   *   (c: Country, q: string) =>
+   *     c.label.toLocaleLowerCase().includes(q) || c.dialCode.includes(q),
+   *   [],
+   * );
+   *
+   * <BottomSheetSelect options={countries} filterOption={filterCountry} />
+   * ```
+   */
+  filterOption?: (option: T, query: string) => boolean;
   onChange?: (value: string) => void;
   renderTriggerValue?: (selected: T | undefined) => ReactNode;
   renderOptionContent?: (option: T) => ReactNode;
 };
+
+const defaultFilterOption = <T extends SelectOption>(option: T, query: string) =>
+  option.label.toLocaleLowerCase().includes(query);
 
 const FooterSearch = memo(function FooterSearch({
   onChange,
@@ -45,7 +68,6 @@ const FooterSearch = memo(function FooterSearch({
         onChange(next);
       }}
       placeholder={placeholder}
-      className="drop-shadow-lg"
     />
   );
 });
@@ -58,6 +80,7 @@ export const BottomSheetSelect = <T extends SelectOption>({
   accessibilityLabel,
   searchable = false,
   searchPlaceholder = "Search...",
+  filterOption = defaultFilterOption,
   onChange,
   renderTriggerValue,
   renderOptionContent,
@@ -72,8 +95,8 @@ export const BottomSheetSelect = <T extends SelectOption>({
     if (!searchable) return options;
     const q = searchValue.trim().toLocaleLowerCase();
     if (!q) return options;
-    return options.filter((option) => option.label.toLowerCase().includes(q));
-  }, [searchable, searchValue, options]);
+    return options.filter((option) => filterOption(option, q));
+  }, [searchable, searchValue, options, filterOption]);
 
   const renderItem = useCallback<ListRenderItem<T>>(
     ({ item }) => (
