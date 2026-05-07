@@ -65,9 +65,13 @@ export const PhoneNumberInput = ({ value, onChange, onBlur, isInvalid }: Props) 
     const q = searchValue.trim().toLocaleLowerCase();
     if (!q) return DIAL_CODES;
     return DIAL_CODES.filter(
-      (option) => option.name.toLowerCase().includes(q) || option.dialCode.includes(q),
+      (option) => option.name.toLocaleLowerCase().includes(q) || option.dialCode.includes(q),
     );
   }, [searchValue]);
+
+  const placeholder = useMemo(() => {
+    return phoneNumberPlaceholder(dialCode.code as CountryCode);
+  }, [dialCode]);
 
   const emit = useCallback(
     (nextNational: string, nextCountry: CountryCode) => {
@@ -92,12 +96,9 @@ export const PhoneNumberInput = ({ value, onChange, onBlur, isInvalid }: Props) 
   );
 
   const handleDialCodeChange = useCallback(
-    (option: { value: string; label: string } | undefined) => {
-      if (!option) return;
-      const found = DIAL_CODES.find((d) => d.value === option.value);
-      if (!found) return;
-      setDialCode(found);
-      emit(national, found.code as CountryCode);
+    (option: DialCodeOption) => {
+      setDialCode(option);
+      emit(national, option.code as CountryCode);
     },
     [national, emit],
   );
@@ -120,7 +121,7 @@ export const PhoneNumberInput = ({ value, onChange, onBlur, isInvalid }: Props) 
 
   const renderFooter = useCallback(
     (props: BottomSheetFooterProps) => (
-      <BottomSheetFooter {...props} bottomInset={insets.bottom - 16}>
+      <BottomSheetFooter {...props} bottomInset={Math.max(0, insets.bottom - 16)}>
         <View
           className="px-8 py-4"
           onStartShouldSetResponder={() => true}
@@ -174,7 +175,7 @@ export const PhoneNumberInput = ({ value, onChange, onBlur, isInvalid }: Props) 
         value={national}
         onChangeText={handleNationalChange}
         onBlur={onBlur}
-        placeholder={phoneNumberPlaceholder(dialCode.code as CountryCode)}
+        placeholder={placeholder}
         keyboardType="phone-pad"
         isInvalid={isInvalid}
       />
