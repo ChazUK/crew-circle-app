@@ -191,7 +191,7 @@ export const SearchableWithCustomContent: Story = {
             }}
           />
           <Select.ItemLabel />
-          <Text style={{ fontSize: 18 }}>{option.emoji}</Text>
+          <Text className="text-base">{option.emoji}</Text>
         </View>
         <Select.ItemIndicator />
       </>

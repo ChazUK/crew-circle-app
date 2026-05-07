@@ -64,7 +64,9 @@ export const PhoneNumberInput = ({ value, onChange, onBlur, isInvalid }: Props) 
   const filteredOptions = useMemo(() => {
     const q = searchValue.trim().toLocaleLowerCase();
     if (!q) return DIAL_CODES;
-    return DIAL_CODES.filter((option) => option.name.toLowerCase().includes(q));
+    return DIAL_CODES.filter(
+      (option) => option.name.toLowerCase().includes(q) || option.dialCode.includes(q),
+    );
   }, [searchValue]);
 
   const emit = useCallback(
