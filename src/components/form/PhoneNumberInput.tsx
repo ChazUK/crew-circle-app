@@ -97,8 +97,11 @@ export const PhoneNumberInput = ({ value, onChange, onBlur, isInvalid }: Props) 
 
   const handleDialCodeChange = useCallback(
     (option: DialCodeOption) => {
-      setDialCode(option);
-      emit(national, option.code as CountryCode);
+      if (!option) return;
+      const found = DIAL_CODES.find((d) => d.value === option.value);
+      if (!found) return;
+      setDialCode(found);
+      emit(national, found.code as CountryCode);
     },
     [national, emit],
   );
