@@ -96,7 +96,7 @@ export const PhoneNumberInput = ({ value, onChange, onBlur, isInvalid }: Props) 
   );
 
   const handleDialCodeChange = useCallback(
-    (option: DialCodeOption) => {
+    (option: { value: string; label: string } | undefined) => {
       if (!option) return;
       const found = DIAL_CODES.find((d) => d.value === option.value);
       if (!found) return;
