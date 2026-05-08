@@ -80,7 +80,7 @@ export default function Diary() {
 
   return (
     <>
-      <ScrollView style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      <ScrollView style={{ flex: 1, paddingBottom: insets.bottom }}>
         <View className="flex-1">
           <View className="flex-row items-center justify-between px-4">
             <Text className="text-2xl font-bold text-foreground">My Diary</Text>
@@ -118,7 +118,11 @@ export default function Diary() {
               selectedDotColor: accentForeground,
             }}
             renderArrow={(direction) =>
-              direction === "left" ? <ChevronLeft size={24} /> : <ChevronRight size={24} />
+              direction === "left" ? (
+                <ChevronLeft style={{ backgroundColor: "red" }} size={24} />
+              ) : (
+                <ChevronRight size={24} />
+              )
             }
             style={{ marginHorizontal: 8 }}
           />

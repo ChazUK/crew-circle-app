@@ -94,7 +94,11 @@ function BenefitRow({ title, description, icon: Icon = CheckIcon }: BenefitRowPr
         <Icon size={14} color="white" />
       </View>
       <View className="flex-1 gap-0.5">
-        {typeof title === "string" ? <BenefitTitle>{title}</BenefitTitle> : title}
+        {typeof title === "string" ? (
+          <Text className="text-base font-semibold text-foreground">{title}</Text>
+        ) : (
+          title
+        )}
         {description !== undefined ? (
           typeof description === "string" ? (
             <Text className="text-sm leading-5 text-muted-foreground">{description}</Text>
@@ -105,12 +109,4 @@ function BenefitRow({ title, description, icon: Icon = CheckIcon }: BenefitRowPr
       </View>
     </View>
   );
-}
-
-export function BenefitTitle({ children }: { children: React.ReactNode }) {
-  return <Text className="text-base font-semibold text-foreground">{children}</Text>;
-}
-
-export function BenefitHighlight({ children }: { children: React.ReactNode }) {
-  return <Text className="text-accent">{children}</Text>;
 }

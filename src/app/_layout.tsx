@@ -54,15 +54,15 @@ export default Sentry.wrap(RootLayout);
 function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppErrorBoundary>
-        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-          <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-            <HeroUINativeProvider config={config}>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+          <HeroUINativeProvider config={config}>
+            <AppErrorBoundary>
               <RootNavigator />
-            </HeroUINativeProvider>
-          </ConvexProviderWithClerk>
-        </ClerkProvider>
-      </AppErrorBoundary>
+            </AppErrorBoundary>
+          </HeroUINativeProvider>
+        </ConvexProviderWithClerk>
+      </ClerkProvider>
     </GestureHandlerRootView>
   );
 }

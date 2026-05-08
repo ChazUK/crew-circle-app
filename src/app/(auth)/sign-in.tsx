@@ -272,7 +272,7 @@ export default function Page() {
             <Card.Body className="gap-4">
               <signInForm.Field name="emailAddress">
                 {(field) => (
-                  <TextField isInvalid={!!clerkErrors.fields.identifier}>
+                  <TextField isRequired isInvalid={!!clerkErrors.fields.identifier}>
                     <Label>Email</Label>
                     <Input
                       autoCapitalize="none"
@@ -377,9 +377,9 @@ export default function Page() {
 function OrDivider() {
   return (
     <View className="flex-row items-center">
-      <Separator />
+      <Separator className="flex-1" />
       <Text className="mx-2 text-muted">OR</Text>
-      <Separator />
+      <Separator className="flex-1" />
     </View>
   );
 }

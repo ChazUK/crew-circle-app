@@ -15,20 +15,12 @@ type Props = {
 
 export function EnterNumberView({ onCodeSent }: Props) {
   const { user } = useUser();
-  const [value, setValue] = useState({ country: "", national: "" });
-  const [normalized, setNormalized] = useState<{ e164: string | null; isValid: boolean }>({
-    e164: null,
-    isValid: false,
-  });
+  const [e164, setE164] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function handleChange(
-    next: { country: string; national: string },
-    norm: { e164: string | null; isValid: boolean },
-  ) {
-    setValue(next);
-    setNormalized(norm);
+  function handleChange(next: string | null) {
+    setE164(next);
     setError(null);
   }
 
@@ -42,10 +34,16 @@ export function EnterNumberView({ onCodeSent }: Props) {
       return;
     }
 
-    const result = await addAndStartVerification({ user, phoneNumber: normalized.e164! });
+    if (!e164) {
+      setError("Enter a valid phone number.");
+      setLoading(false);
+      return;
+    }
+
+    const result = await addAndStartVerification({ user, phoneNumber: e164 });
 
     if (result.ok) {
-      onCodeSent(normalized.e164!);
+      onCodeSent(e164);
     } else {
       setError(result.message);
       setLoading(false);
@@ -56,18 +54,13 @@ export function EnterNumberView({ onCodeSent }: Props) {
     <View className="gap-6">
       <Text className="text-4xl font-bold">Verify your phone number</Text>
       <View className="gap-3">
-        <PhoneNumberInput
-          value={value}
-          onChange={handleChange}
-          disabled={loading}
-          error={error ?? undefined}
-        />
+        <PhoneNumberInput value={e164} onChange={handleChange} isInvalid={!!error} />
         <Text className="text-sm text-muted">{DISCLOSURE}</Text>
-        <Text>{JSON.stringify(normalized)}</Text>
+        {error ? <Text className="text-sm text-danger">{error}</Text> : null}
       </View>
       <Button
         variant="primary"
-        isDisabled={!normalized.isValid || loading}
+        isDisabled={!e164 || loading}
         onPress={handleSubmit}
         accessibilityLabel="Send verification code"
       >
