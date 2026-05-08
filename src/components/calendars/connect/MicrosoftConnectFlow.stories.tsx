@@ -6,7 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { MicrosoftConnectFlow } from "./MicrosoftConnectFlow";
 
-// Pure display helpers for each visual state — avoid importing live Convex hooks
+// Pure display helpers for each visual state - avoid importing live Convex hooks
 
 function IdleState({ onBack }: { onBack: () => void }) {
   return (

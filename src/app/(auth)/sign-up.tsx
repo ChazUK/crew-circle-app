@@ -62,7 +62,7 @@ export default function Page() {
       }
 
       if (signUp.status === "complete") {
-        // Use setActive directly instead of finalize() — finalize triggers Clerk's
+        // Use setActive directly instead of finalize() - finalize triggers Clerk's
         // setup-mfa session task gate which resets state and blocks navigation when
         // MFA is required in the dashboard but the app has no MFA setup flow.
         await setActive({ session: signUp.createdSessionId });

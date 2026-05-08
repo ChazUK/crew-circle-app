@@ -86,7 +86,7 @@ export async function uploadImageToConvex(
     ((result as Record<string, unknown>).storageId as string).trim() === ""
   ) {
     throw new Error(
-      `upload to Convex failed: response missing valid storageId — got ${JSON.stringify(result)}`,
+      `upload to Convex failed: response missing valid storageId - got ${JSON.stringify(result)}`,
     );
   }
 

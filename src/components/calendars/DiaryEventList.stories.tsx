@@ -21,7 +21,7 @@ const allDayEvent: DiaryEvent = {
 
 const morningEvent: DiaryEvent = {
   _id: "evt_timed_1",
-  title: "Kit service — Panavision",
+  title: "Kit service - Panavision",
   startsAt: todayNoonMs - 1 * 3600_000, // 11:00
   endsAt: todayNoonMs + 30 * 60_000, // 12:30
   isAllDay: false,
@@ -40,7 +40,7 @@ const afternoonEvent: DiaryEvent = {
   color: "#f59e0b",
   provider: "microsoft",
   connectionLabel: "jordan@studio.com",
-  location: "Soho — Edit Suite 3",
+  location: "Soho - Edit Suite 3",
 };
 
 const eveningEvent: DiaryEvent = {

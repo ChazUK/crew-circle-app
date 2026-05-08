@@ -40,7 +40,7 @@ const DEFAULT_DIAL_CODE =
 /**
  * Tiebreakers for shared calling codes when libphonenumber can't pin a specific
  * country (e.g. Ofcom test ranges, fake example numbers). Only consulted when
- * `parsed.country` is undefined — real numbers are disambiguated by the library.
+ * `parsed.country` is undefined - real numbers are disambiguated by the library.
  */
 const PREFERRED_COUNTRY_BY_CALLING_CODE: Record<string, string> = {
   "1": "US",
@@ -237,8 +237,8 @@ function findByCallingCode(callingCode: string): DialCodeOption | null {
 
 /**
  * Detects a leading `+`-prefixed calling code in user input. Handles two cases:
- * - Full E.164 paste (`+447988509614`) — libphonenumber parses and formats it.
- * - Partial typing (`+44`, `+447`) — match longest leading 1–3 digit prefix
+ * - Full E.164 paste (`+447988509614`) - libphonenumber parses and formats it.
+ * - Partial typing (`+44`, `+447`) - match longest leading 1–3 digit prefix
  *   against known calling codes, strip it, keep the remainder as national.
  */
 function detectDialCode(input: string): { dialCode: DialCodeOption; national: string } | null {

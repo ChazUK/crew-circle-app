@@ -8,7 +8,7 @@ import { syncNativeConnections } from "./syncNativeConnections";
 
 export const CALENDAR_BACKGROUND_SYNC_TASK = "CALENDAR_BACKGROUND_SYNC";
 
-// 15 minutes. iOS throttles expo-background-fetch at the OS level — the actual
+// 15 minutes. iOS throttles expo-background-fetch at the OS level - the actual
 // invocation cadence is decided by the system based on usage signals, so this
 // is a hint, not a guarantee.
 const MINIMUM_INTERVAL_SECONDS = 15 * 60;
@@ -42,7 +42,7 @@ TaskManager.defineTask(CALENDAR_BACKGROUND_SYNC_TASK, async () => {
 
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch {
-    // Background tasks cannot show UI — swallow errors to keep the OS from
+    // Background tasks cannot show UI - swallow errors to keep the OS from
     // back-pressuring the schedule after repeated visible failures.
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }

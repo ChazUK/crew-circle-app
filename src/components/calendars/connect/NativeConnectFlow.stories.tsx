@@ -8,7 +8,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SubCalendarList } from "../SubCalendarPicker";
 import { NativeConnectFlow } from "./NativeConnectFlow";
 
-// Pure display helpers for each visual state — avoid importing live Convex hooks
+// Pure display helpers for each visual state - avoid importing live Convex hooks
 
 function IdleState({ onBack }: { onBack: () => void }) {
   return (

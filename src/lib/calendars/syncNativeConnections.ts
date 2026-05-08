@@ -35,7 +35,7 @@ export async function syncNativeConnections(
       const events = await fetchNativeEvents(nativeCalendarIds, window);
       await uploadEvents(connectionId, events);
     } catch (err) {
-      // Don't abort siblings on a single connection's failure — collect
+      // Don't abort siblings on a single connection's failure - collect
       // and rethrow at the end so the caller (background-fetch) can
       // signal Failed to the OS scheduler instead of NewData.
       const error = err instanceof Error ? err : new Error(String(err));

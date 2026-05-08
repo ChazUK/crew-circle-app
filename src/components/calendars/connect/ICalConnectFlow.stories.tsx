@@ -6,7 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { ICalConnectFlow } from "./ICalConnectFlow";
 
-// Pure display helpers for each visual state — avoid importing live Convex hooks
+// Pure display helpers for each visual state - avoid importing live Convex hooks
 
 function FormState({ onBack, urlError }: { onBack: () => void; urlError?: string }) {
   return (

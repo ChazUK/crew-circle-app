@@ -30,7 +30,7 @@ export const MfaTOTP: Story = {
   args: {
     title: "Two-factor authentication",
     subtitle: "Enter the 6-digit code from your authenticator app",
-    // no onResend — TOTP doesn't send a code
+    // no onResend - TOTP doesn't send a code
   },
 };
 

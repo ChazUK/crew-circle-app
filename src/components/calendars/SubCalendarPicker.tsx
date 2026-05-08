@@ -69,7 +69,7 @@ export function SubCalendarList({
       {subCalendars.length === 0 ? (
         <View className="px-1 py-4">
           <Text className="text-sm text-muted-foreground">
-            Your calendar is ready — tap Confirm to start syncing.
+            Your calendar is ready - tap Confirm to start syncing.
           </Text>
         </View>
       ) : (

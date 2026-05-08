@@ -7,7 +7,7 @@ import { VerificationCodeInput } from "@/components/ui/phone/VerificationCodeInp
 
 import { EnterCodeView } from "./EnterCodeView";
 
-// Pure display helpers for each visual state — avoid importing live Convex/Clerk hooks
+// Pure display helpers for each visual state - avoid importing live Convex/Clerk hooks
 
 type DisplayProps = {
   maskedPhone: string;

@@ -10,7 +10,7 @@ type Props = {
   subtitle: string;
   value: string;
   onChange: (value: string) => void;
-  /** Called when the user submits — either by pressing the button (no arg) or by completing the code (with the completed code). */
+  /** Called when the user submits - either by pressing the button (no arg) or by completing the code (with the completed code). */
   onSubmit: (code?: string) => void;
   isLoading: boolean;
   isDisabled: boolean;

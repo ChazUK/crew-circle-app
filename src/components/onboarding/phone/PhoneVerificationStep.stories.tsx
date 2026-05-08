@@ -10,7 +10,7 @@ import { VerificationCodeInput } from "@/components/ui/phone/VerificationCodeInp
 
 import { PhoneVerificationStep } from "./PhoneVerificationStep";
 
-// Pure display helpers for each visual state — avoid importing live Clerk/Convex hooks
+// Pure display helpers for each visual state - avoid importing live Clerk/Convex hooks
 
 const DISCLOSURE =
   "We use your phone number to help fellow crew find you and to send job alerts and time-sensitive updates. It is never shown on your profile.";

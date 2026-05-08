@@ -87,7 +87,7 @@ function RootNavigator() {
   // Clerk persists its token in SecureStore across relaunches. If Clerk has a
   // session but Convex doesn't recognise it (e.g. the backend was reset), sign
   // out to re-sync both systems before the user interacts with anything.
-  // Only check once — when isLoading first settles to false. Checking on every
+  // Only check once - when isLoading first settles to false. Checking on every
   // change would incorrectly sign out a user mid-sign-up because isSignedIn
   // (Clerk) flips true before isAuthenticated (Convex) catches up.
   useEffect(() => {
@@ -120,12 +120,12 @@ function RootNavigator() {
   }, [isLoading, isAuthenticated, isUserReady, currentUser]);
 
   // Refresh native (on-device) calendar connections on launch and whenever
-  // the app returns to the foreground — picks up events the user added in
+  // the app returns to the foreground - picks up events the user added in
   // the device calendar app while we were backgrounded. The server-side
   // debounce in `syncNativeOnOpen` skips connections synced within the last
   // 60 seconds, so quick app re-opens don't hammer the device store.
   // When the app returns from background, the Convex WebSocket is still
-  // reconnecting — the first action call races the reconnect and fails with
+  // reconnecting - the first action call races the reconnect and fails with
   // "Connection lost while action was in flight". Retry on that specific
   // error with backoff so the foreground sync survives the reconnect window.
   const runNativeOnOpenSync = useCallback(

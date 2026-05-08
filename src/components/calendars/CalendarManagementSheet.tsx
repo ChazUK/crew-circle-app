@@ -47,7 +47,7 @@ type ConnectionListProps = {
   onDisconnect: (id: Id<"calendarConnections">) => void;
 };
 
-// Exported for Storybook — renders all visual states without Convex
+// Exported for Storybook - renders all visual states without Convex
 export function CalendarConnectionList({
   connections,
   syncingIds,
@@ -146,7 +146,7 @@ type CalendarAddSectionProps = {
   onSelectProvider: (step: ActiveStep) => void;
 };
 
-// Exported for Storybook — renders provider buttons without Convex
+// Exported for Storybook - renders provider buttons without Convex
 export function CalendarAddSection({ onSelectProvider }: CalendarAddSectionProps) {
   return (
     <View className="mt-6 gap-3">

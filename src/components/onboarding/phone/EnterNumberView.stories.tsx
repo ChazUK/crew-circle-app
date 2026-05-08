@@ -8,7 +8,7 @@ import { PhoneNumberInput } from "@/components/form/PhoneNumberInput";
 
 import { EnterNumberView } from "./EnterNumberView";
 
-// Pure display helpers for each visual state — avoid importing live Clerk hooks
+// Pure display helpers for each visual state - avoid importing live Clerk hooks
 
 const DISCLOSURE =
   "We use your phone number to help fellow crew find you and to send job alerts and time-sensitive updates. It is never shown on your profile.";

@@ -83,7 +83,7 @@ export const AtMaxCapacity: Story = {
     const [images, setImages] = useState<ImageItem[]>(args.images ?? []);
     return (
       <View style={{ gap: 12 }}>
-        <Text style={{ fontSize: 13, color: "#666" }}>Max 3 images — add button hidden</Text>
+        <Text style={{ fontSize: 13, color: "#666" }}>Max 3 images - add button hidden</Text>
         <ImageGalleryPicker {...args} images={images} onChange={setImages} />
       </View>
     );

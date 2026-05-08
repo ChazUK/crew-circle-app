@@ -29,7 +29,7 @@ type BottomSheetSelectProps<T extends SelectOption> = {
    * Predicate used to filter options against the search query.
    *
    * `query` is already trimmed and lower-cased, and empty queries short-circuit
-   * before this is called — your predicate never receives `""`.
+   * before this is called - your predicate never receives `""`.
    *
    * Defaults to a case-insensitive `label.includes(query)` match. Override to
    * search across other fields, e.g. a country dial code:
