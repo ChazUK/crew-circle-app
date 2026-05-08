@@ -2,10 +2,11 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import type { SubCalendar } from "@shared/calendars";
 import { useAction } from "convex/react";
-import { Button, Dialog, Spinner } from "heroui-native";
+import { Button, Spinner } from "heroui-native";
 import { useState } from "react";
-import { Platform, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
+import { CalendarPermissionDeniedDialog } from "@/components/permissions/CalendarPermissionDeniedDialog";
 import { useSubCalendarConfirm } from "@/hooks/calendars/useSubCalendarConfirm";
 import { listNativeSubCalendars } from "@/lib/calendars/listNativeSubCalendars";
 import { requestNativeCalendarPermission } from "@/lib/calendars/requestNativeCalendarPermission";
@@ -77,34 +78,12 @@ export function NativeConnectFlow({ onBack }: Props) {
     );
   }
 
-  const permissionInstructions =
-    Platform.OS === "ios"
-      ? "Go to Settings → Privacy & Security → Calendars and allow access for CrewCircle."
-      : "Go to Settings → Apps → CrewCircle → Permissions and allow Calendar access.";
-
   return (
     <>
-      <Dialog
+      <CalendarPermissionDeniedDialog
         isOpen={permissionDenied}
-        onOpenChange={(open) => {
-          if (!open) setPermissionDenied(false);
-        }}
-      >
-        <Dialog.Portal>
-          <Dialog.Overlay />
-          <Dialog.Content>
-            <View className="mb-4 gap-1.5">
-              <Dialog.Title>Calendar access required</Dialog.Title>
-              <Dialog.Description>{permissionInstructions}</Dialog.Description>
-            </View>
-            <View className="flex-row justify-end">
-              <Button size="sm" onPress={() => setPermissionDenied(false)} accessibilityLabel="OK">
-                OK
-              </Button>
-            </View>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog>
+        onClose={() => setPermissionDenied(false)}
+      />
 
       <View className="flex-1 gap-6 py-4">
         <View className="flex-row items-center gap-2 px-1">

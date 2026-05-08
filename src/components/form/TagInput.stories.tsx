@@ -7,7 +7,7 @@ import { COUNTRIES } from "@/lib/countries/countries";
 import { TagInput } from "./TagInput";
 
 const meta = {
-  title: "UI/TagInput",
+  title: "Form/TagInput",
   component: TagInput,
   decorators: [
     (Story) => (
