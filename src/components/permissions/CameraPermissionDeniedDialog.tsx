@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 
+import { isCameraPermissionGranted } from "@/lib/permissions/isCameraPermissionGranted";
+
 import {
   PermissionDeniedDialog,
   StepHighlight,
@@ -59,6 +61,7 @@ export function CameraPermissionDeniedDialog({ isOpen, onClose }: Props) {
       title="Camera access required"
       reason="CrewCircle needs access to your camera to take a profile photo."
       steps={steps}
+      checkPermission={isCameraPermissionGranted}
     />
   );
 }

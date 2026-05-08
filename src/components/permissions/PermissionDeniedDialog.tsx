@@ -1,6 +1,7 @@
 import { Dialog, PressableFeedback, Surface, useThemeColor } from "heroui-native";
 import { CogIcon, SettingsIcon as LucideSettingsIcon } from "lucide-react-native";
-import { Linking, Platform, Text, View } from "react-native";
+import { useEffect } from "react";
+import { AppState, Linking, Platform, Text, View } from "react-native";
 
 export type PermissionStep = {
   title: React.ReactNode;
@@ -14,12 +15,29 @@ type Props = {
   title: string;
   reason: string;
   steps: PermissionStep[];
+  checkPermission: () => Promise<boolean>;
 };
 
 const platformLabel = Platform.OS === "ios" ? "iOS" : "Android";
 const SettingsIcon = Platform.OS === "ios" ? CogIcon : LucideSettingsIcon;
 
-export function PermissionDeniedDialog({ isOpen, onClose, title, reason, steps }: Props) {
+export function PermissionDeniedDialog({
+  isOpen,
+  onClose,
+  title,
+  reason,
+  steps,
+  checkPermission,
+}: Props) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const subscription = AppState.addEventListener("change", async (state) => {
+      if (state !== "active") return;
+      if (await checkPermission()) onClose();
+    });
+    return () => subscription.remove();
+  }, [isOpen, checkPermission, onClose]);
+
   const allSteps: PermissionStep[] = [
     {
       title: `Open ${platformLabel} Settings`.replace(/\s+/g, " ").trim(),

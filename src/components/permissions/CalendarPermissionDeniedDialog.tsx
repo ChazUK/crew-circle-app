@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 
+import { isNativeCalendarPermissionGranted } from "@/lib/permissions/isNativeCalendarPermissionGranted";
+
 import {
   PermissionDeniedDialog,
   StepHighlight,
@@ -67,6 +69,7 @@ export function CalendarPermissionDeniedDialog({ isOpen, onClose }: Props) {
       title="Calendar access required"
       reason="CrewCircle needs full calendar access to view when you're busy and add events to your schedule."
       steps={steps}
+      checkPermission={isNativeCalendarPermissionGranted}
     />
   );
 }

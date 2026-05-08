@@ -3,7 +3,7 @@ import { Button } from "heroui-native";
 import { useState } from "react";
 import { View } from "react-native";
 
-import { PermissionDeniedDialog } from "./PermissionDeniedDialog";
+import { ContactsPermissionDeniedDialog } from "./ContactsPermissionDeniedDialog";
 
 const decorator = (Story: React.ComponentType) => (
   <View style={{ flex: 1, backgroundColor: "#f9f9f9" }}>
@@ -12,26 +12,13 @@ const decorator = (Story: React.ComponentType) => (
 );
 
 const meta = {
-  title: "Permissions/PermissionDeniedDialog",
-  component: PermissionDeniedDialog,
+  title: "Permissions/ContactsPermissionDeniedDialog",
+  component: ContactsPermissionDeniedDialog,
   decorators: [decorator],
   tags: ["autodocs"],
   args: {
     isOpen: true,
     onClose: () => {},
-    checkPermission: async () => false,
-    title: "Permission required",
-    reason: "CrewCircle needs this permission to provide the feature.",
-    steps: [
-      {
-        title: "Tap the feature",
-        description: "Find the feature row in the CrewCircle list.",
-      },
-      {
-        title: "Allow access",
-        description: "Toggle the permission on so CrewCircle can use it.",
-      },
-    ],
   },
   render: (args) => {
     const [isOpen, setIsOpen] = useState(args.isOpen);
@@ -40,11 +27,15 @@ const meta = {
         <Button onPress={() => setIsOpen(true)} accessibilityLabel="Open dialog">
           Open dialog
         </Button>
-        <PermissionDeniedDialog {...args} isOpen={isOpen} onClose={() => setIsOpen(false)} />
+        <ContactsPermissionDeniedDialog
+          {...args}
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+        />
       </View>
     );
   },
-} satisfies Meta<typeof PermissionDeniedDialog>;
+} satisfies Meta<typeof ContactsPermissionDeniedDialog>;
 
 export default meta;
 

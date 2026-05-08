@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 
+import { isNotificationsPermissionGranted } from "@/lib/permissions/isNotificationsPermissionGranted";
+
 import {
   PermissionDeniedDialog,
   StepHighlight,
@@ -59,6 +61,7 @@ export function NotificationsPermissionDeniedDialog({ isOpen, onClose }: Props) 
       title="Notifications disabled"
       reason="CrewCircle uses notifications to let you know when crew members respond to invitations and when shared events change."
       steps={steps}
+      checkPermission={isNotificationsPermissionGranted}
     />
   );
 }

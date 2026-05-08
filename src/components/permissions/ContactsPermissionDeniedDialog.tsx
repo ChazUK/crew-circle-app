@@ -1,6 +1,6 @@
 import { Platform } from "react-native";
 
-import { isPhotosPermissionGranted } from "@/lib/permissions/isPhotosPermissionGranted";
+import { isContactsPermissionGranted } from "@/lib/permissions/isContactsPermissionGranted";
 
 import {
   PermissionDeniedDialog,
@@ -20,10 +20,10 @@ const steps: PermissionStep[] =
         {
           title: (
             <StepTitle>
-              Tap <StepHighlight>Photos</StepHighlight>
+              Tap <StepHighlight>Contacts</StepHighlight>
             </StepTitle>
           ),
-          description: "Look for the Photos row in the CrewCircle list.",
+          description: "Look for the Contacts row in the CrewCircle list.",
         },
         {
           title: (
@@ -31,7 +31,7 @@ const steps: PermissionStep[] =
               Select <StepHighlight>Full Access</StepHighlight>
             </StepTitle>
           ),
-          description: "Choose Full Access so CrewCircle can read your library.",
+          description: "Choose Full Access so CrewCircle can find your crew.",
         },
       ]
     : [
@@ -46,10 +46,10 @@ const steps: PermissionStep[] =
         {
           title: (
             <StepTitle>
-              Tap <StepHighlight>Photos and videos</StepHighlight>
+              Tap <StepHighlight>Contacts</StepHighlight>
             </StepTitle>
           ),
-          description: "Find the Photos and videos permission entry.",
+          description: "Find the Contacts permission entry.",
         },
         {
           title: (
@@ -57,19 +57,19 @@ const steps: PermissionStep[] =
               Select <StepHighlight>Allow</StepHighlight>
             </StepTitle>
           ),
-          description: "Switch the photos permission to Allow.",
+          description: "Switch the contacts permission to Allow.",
         },
       ];
 
-export function PhotosPermissionDeniedDialog({ isOpen, onClose }: Props) {
+export function ContactsPermissionDeniedDialog({ isOpen, onClose }: Props) {
   return (
     <PermissionDeniedDialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Photo library access required"
-      reason="CrewCircle needs access to your photo library to upload a profile photo."
+      title="Contacts access required"
+      reason="CrewCircle needs access to your contacts to help you find and invite the people to your circles and share job posts with them."
       steps={steps}
-      checkPermission={isPhotosPermissionGranted}
+      checkPermission={isContactsPermissionGranted}
     />
   );
 }
