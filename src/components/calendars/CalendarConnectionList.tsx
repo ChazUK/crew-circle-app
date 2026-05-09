@@ -1,11 +1,16 @@
 import type { Id } from "@convex/_generated/dataModel";
 import { formatDistanceToNow } from "date-fns";
-import { Accordion, PressableFeedback, Separator, Spinner, Switch } from "heroui-native";
+import { Accordion, Button, PressableFeedback, Separator, Spinner, Switch } from "heroui-native";
+import { XIcon } from "lucide-react-native";
 import { Text, View } from "react-native";
 import { Fragment } from "react/jsx-runtime";
 
 import { EmptyState } from "../ui/EmptyState";
 import { CalendarProviderIcon } from "../ui/icons/CalendarProviderIcons";
+
+const SHOW_SWITCH = false;
+const BUSY_SWITCH = false;
+const DISCONNECT = true;
 
 export type ConnectionRow = {
   _id: Id<"calendarConnections">;
@@ -39,6 +44,17 @@ export function CalendarConnectionList({ connections, syncingIds, onSync, onDisc
     return <EmptyState>No calendars connected yet.</EmptyState>;
   }
 
+  const numConnections = connections.length;
+  const numSubCalendars = connections
+    .map((connection) => connection.subCalendarCount)
+    .reduce((a, b) => a + b, 0);
+  const numMarking = connections.filter((c) => c.subCalendarCount > 0).length;
+  const stats = [
+    `${numConnections} connections`,
+    `${numSubCalendars} sub calendars`,
+    // `${numMarking} marking you busy`,
+  ];
+
   return (
     <Accordion
       selectionMode="single"
@@ -52,9 +68,7 @@ export function CalendarConnectionList({ connections, syncingIds, onSync, onDisc
         <Accordion.Trigger>
           <View className="flex-1">
             <Text className="text-base font-semibold">Calendars</Text>
-            <Text className="text-xs text-muted">
-              {connections.length} linked · X marking you busy
-            </Text>
+            <Text className="text-xs text-muted">{stats.join(" · ")}</Text>
           </View>
           <Accordion.Indicator />
         </Accordion.Trigger>
@@ -63,29 +77,26 @@ export function CalendarConnectionList({ connections, syncingIds, onSync, onDisc
             <Fragment>
               <View className="flex-row items-center gap-3 mb-2">
                 <Text className="flex-1 text-xs uppercase">Source</Text>
-                <Text className="text-xs uppercase text-center w-12">Show</Text>
-                <Text className="text-xs uppercase text-center w-12">Busy</Text>
+                {SHOW_SWITCH && <Text className="text-xs uppercase text-center w-12">Show</Text>}
+                {BUSY_SWITCH && <Text className="text-xs uppercase text-center w-12">Busy</Text>}
               </View>
               <View className="gap-3">
-                {connections.map(
-                  (
-                    { _id, provider, color, label, lastSyncedAt, lastSyncError, syncErrorCount },
-                    index,
-                  ) => (
-                    <Fragment key={_id}>
-                      {index !== 0 && <Separator />}
-                      <CalendarConnectionItem
-                        provider={provider}
-                        color={color}
-                        label={label}
-                        lastSyncedAt={lastSyncedAt}
-                        isSyncing={syncingIds?.has(_id) ?? false}
-                        syncErrorCount={syncErrorCount}
-                        lastSyncError={lastSyncError}
-                      />
-                    </Fragment>
-                  ),
-                )}
+                {connections.map((connection, index) => (
+                  <Fragment key={connection._id}>
+                    {index !== 0 && <Separator />}
+                    <CalendarConnectionItem
+                      provider={connection.provider}
+                      color={connection.color}
+                      label={connection.label}
+                      lastSyncedAt={connection.lastSyncedAt}
+                      isSyncing={syncingIds?.has(connection._id) ?? false}
+                      syncErrorCount={connection.syncErrorCount}
+                      lastSyncError={connection.lastSyncError}
+                      onSync={() => onSync(connection)}
+                      onDisconnect={() => onDisconnect(connection._id)}
+                    />
+                  </Fragment>
+                ))}
               </View>
             </Fragment>
           ) : null}
@@ -103,6 +114,8 @@ type CalendarConnectionItemProps = {
   isSyncing?: boolean;
   syncErrorCount?: number;
   lastSyncError?: string;
+  onSync: () => void;
+  onDisconnect: () => void;
 };
 
 function CalendarConnectionItem({
@@ -113,6 +126,8 @@ function CalendarConnectionItem({
   isSyncing,
   syncErrorCount = 0,
   lastSyncError,
+  onSync,
+  onDisconnect,
 }: CalendarConnectionItemProps) {
   const syncStatus = isSyncing
     ? "Syncing..."
@@ -122,7 +137,11 @@ function CalendarConnectionItem({
 
   return (
     <View className="gap-1">
-      <PressableFeedback className="flex-row items-center gap-3" accessibilityRole="button">
+      <PressableFeedback
+        className="flex-row items-center gap-3"
+        accessibilityRole="button"
+        onPress={onSync}
+      >
         <View className="size-7 items-center justify-center">
           {isSyncing ? (
             <Spinner size="sm" />
@@ -140,10 +159,17 @@ function CalendarConnectionItem({
           <Text className="text-sm font-medium text-foreground" numberOfLines={1}>
             {label}
           </Text>
-          <Text className="text-xs text-muted">{syncStatus}</Text>
+          <Text className="text-xs text-muted" numberOfLines={1}>
+            {syncStatus}
+          </Text>
         </View>
-        <Switch />
-        <Switch />
+        {SHOW_SWITCH && <Switch isSelected />}
+        {BUSY_SWITCH && <Switch isSelected />}
+        {DISCONNECT && (
+          <Button variant="danger-soft" size="sm" isIconOnly onPress={onDisconnect}>
+            <XIcon size={16} />
+          </Button>
+        )}
       </PressableFeedback>
       {syncErrorCount > 3 && (
         <View className="mt-2 rounded-lg bg-danger/10 px-3 py-2">
