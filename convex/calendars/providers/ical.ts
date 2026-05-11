@@ -32,6 +32,37 @@ export const icalCapabilities: CalendarProviderCapabilities = {
 // provider-side calendar identifier to track.
 export const ICAL_SYNTHETIC_SUB_CALENDAR_EXTERNAL_ID = "default";
 
+const DEFAULT_ICAL_LABEL = "iCal Calendar";
+
+// Pulls X-WR-CALNAME and X-APPLE-CALENDAR-COLOR out of the feed so we can
+// label the connection with whatever the publisher named it (Apple/Fastmail
+// expose this for shared calendars) and inherit the user's chosen colour.
+// Returns nulls when the feed is malformed or the properties are missing —
+// callers fall back to defaults.
+async function readICalMetadata(
+  url: string,
+): Promise<{ calName: string | null; calColor: string | null }> {
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "text/calendar" },
+      signal: AbortSignal.timeout(10_000),
+      redirect: "error",
+    });
+    if (!response.ok) return { calName: null, calColor: null };
+    const text = await response.text();
+    const parsed = ICAL.parse(text);
+    const comp = new ICAL.Component(parsed);
+    const calName = comp.getFirstPropertyValue("x-wr-calname");
+    const calColor = comp.getFirstPropertyValue("x-apple-calendar-color");
+    return {
+      calName: typeof calName === "string" && calName.length > 0 ? calName : null,
+      calColor: typeof calColor === "string" && calColor.length > 0 ? calColor : null,
+    };
+  } catch {
+    return { calName: null, calColor: null };
+  }
+}
+
 type FetchICalResult = { unchanged: true } | { unchanged: false; text: string };
 
 // Fetches the raw iCal feed text for a connection.
@@ -98,10 +129,12 @@ export const ICalProvider: CalendarProvider = {
     if (params.provider !== "ical") {
       throw new Error("ICalProvider.connect called with non-iCal params");
     }
-    const [encryptedUrl, icalUrlHash] = await Promise.all([
+    const [encryptedUrl, icalUrlHash, metadata] = await Promise.all([
       encryptJson(params.url),
       hashICalUrl(params.url),
+      readICalMetadata(params.url),
     ]);
+    const label = metadata.calName ?? DEFAULT_ICAL_LABEL;
     return {
       connection: {
         icalUrl: encryptedUrl,
@@ -110,10 +143,12 @@ export const ICalProvider: CalendarProvider = {
       subCalendars: [
         {
           externalId: ICAL_SYNTHETIC_SUB_CALENDAR_EXTERNAL_ID,
-          label: params.label,
+          label,
           showAsBusy: true,
+          color: metadata.calColor ?? undefined,
         },
       ],
+      suggestedLabel: label,
     };
   },
 

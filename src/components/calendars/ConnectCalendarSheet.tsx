@@ -135,11 +135,11 @@ export function ConnectCalendarSheet({ isOpen, onClose }: Props) {
     });
   };
 
-  const handleIcalSubmit = async ({ url, label }: { url: string; label: string }) => {
+  const handleIcalSubmit = async ({ url }: { url: string }) => {
     setPhase({ kind: "ical-submitting" });
     setUrlError(null);
     try {
-      await connectIcal({ url, label });
+      await connectIcal({ url });
       closeAndReset();
     } catch (err) {
       const message = err instanceof Error ? err.message : "";

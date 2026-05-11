@@ -118,7 +118,6 @@ describe("CalendarService.connect", () => {
         service.connect(ctx, {
           provider: "ical",
           url: "https://example.com/cal.ics",
-          label: "Mine",
         }),
       ),
     ).rejects.toThrow("Not authenticated");
@@ -191,7 +190,6 @@ describe("CalendarService.connect", () => {
       service.connect(ctx, {
         provider: "ical",
         url: "https://example.com/cal.ics",
-        label: "Family iCloud",
       }),
     );
 
@@ -295,7 +293,6 @@ describe("CalendarService.connect", () => {
       service.connect(ctx, {
         provider: "ical",
         url: "https://example.com/cal.ics",
-        label: "Family iCloud",
       }),
     );
 

@@ -77,7 +77,6 @@ export type CalendarConnectParams =
   | {
       provider: "ical";
       url: string;
-      label: string;
     }
   | {
       provider: "native";
@@ -124,6 +123,9 @@ export type SubCalendarBlueprint = {
 export type CalendarConnectResult = {
   connection: CalendarConnectionBlueprint;
   subCalendars: SubCalendarBlueprint[];
+  // Provider-supplied default label (e.g. the connected account's email).
+  // The service uses this when the client passes an empty label.
+  suggestedLabel?: string;
 };
 
 export interface CalendarProvider<TCtx = unknown, TConn = unknown> {

@@ -1,7 +1,8 @@
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex/react";
 import { addDays, endOfMonth, format, parseISO, startOfDay } from "date-fns";
-import { Button, useThemeColor } from "heroui-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Button, ScrollShadow, useThemeColor } from "heroui-native";
 import { CalendarPlus } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -59,17 +60,35 @@ export default function Diary() {
     endMs: dayEndMs,
   });
 
-  const eventDots: Record<string, { dots: { key: string; color: string }[] }> = {};
+  type Period = { startingDay: boolean; endingDay: boolean; color: string } | { color: string };
+  const periodsByDate: Record<string, Period[]> = {};
+
   if (events) {
-    for (const event of events) {
-      const dateKey = format(new Date(event.startsAt), "yyyy-MM-dd");
-      if (!eventDots[dateKey]) {
-        eventDots[dateKey] = { dots: [] };
-      }
-      const existing = eventDots[dateKey]!;
-      const connectionId = event.connectionId as string;
-      if (!existing.dots.some((d) => d.key === connectionId)) {
-        existing.dots.push({ key: connectionId, color: event.color });
+    const sorted = [...events].sort((a, b) => a.startsAt - b.startsAt);
+    const slotEndKey: string[] = [];
+
+    for (const event of sorted) {
+      const startDate = startOfDay(new Date(event.startsAt));
+      const endDate = startOfDay(new Date(event.endsAt - 1));
+      const startKey = format(startDate, "yyyy-MM-dd");
+      const endKey = format(endDate, "yyyy-MM-dd");
+
+      let slot = slotEndKey.findIndex((end) => end < startKey);
+      if (slot === -1) slot = slotEndKey.length;
+      slotEndKey[slot] = endKey;
+
+      let cursor = startDate;
+      while (format(cursor, "yyyy-MM-dd") <= endKey) {
+        const key = format(cursor, "yyyy-MM-dd");
+        const arr = periodsByDate[key] ?? [];
+        while (arr.length <= slot) arr.push({ color: "transparent" });
+        arr[slot] = {
+          startingDay: key === startKey,
+          endingDay: key === endKey,
+          color: event.color,
+        };
+        periodsByDate[key] = arr;
+        cursor = addDays(cursor, 1);
       }
     }
   }
@@ -80,11 +99,11 @@ export default function Diary() {
   };
 
   const mergedMarkedDates: Record<string, object> = {};
-  for (const [date, dotData] of Object.entries(eventDots)) {
+  for (const [date, periodData] of Object.entries(periodsByDate)) {
     if (date === selectedDate) {
-      mergedMarkedDates[date] = { ...dotData, ...selectedMarking };
+      mergedMarkedDates[date] = { periods: periodData, ...selectedMarking };
     } else {
-      mergedMarkedDates[date] = dotData;
+      mergedMarkedDates[date] = { periods: periodData };
     }
   }
   if (!mergedMarkedDates[selectedDate]) {
@@ -94,70 +113,74 @@ export default function Diary() {
   const hasConnections = connections && connections?.length > 0;
 
   return (
-    <>
-      <ScrollView style={{ flex: 1, paddingBottom: insets.bottom }}>
-        <View className="flex-1">
-          <View className="flex-row items-center justify-between px-4">
-            <Text className="text-2xl font-bold text-foreground">My Diary</Text>
-            <Pressable
-              onPress={() => setIsManagementSheetOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Link external calendars"
-              hitSlop={10}
-              className="p-1"
-            >
-              <CalendarPlus />
-            </Pressable>
+    <View style={{ flex: 1, paddingTop: insets.top }}>
+      <View className="flex-row items-center justify-between px-4">
+        <Text className="text-2xl font-bold text-foreground">My Diary</Text>
+        <Pressable
+          onPress={() => setIsManagementSheetOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Link external calendars"
+          hitSlop={10}
+          className="p-1"
+        >
+          <CalendarPlus />
+        </Pressable>
+      </View>
+      <ScrollShadow
+        style={{ flex: 1, paddingBottom: insets.bottom + 16 }}
+        LinearGradientComponent={LinearGradient}
+      >
+        <ScrollView style={{ flex: 1 }}>
+          <View className="flex-1">
+            <Calendar
+              current={todayIso}
+              onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
+              onMonthChange={(m: DateData) => setVisibleMonth(new Date(m.year, m.month - 1, 1))}
+              markedDates={mergedMarkedDates}
+              markingType="multi-period"
+              theme={{
+                backgroundColor: "transparent",
+                calendarBackground: "transparent",
+                selectedDayBackgroundColor: accent,
+                selectedDayTextColor: accentForeground,
+                todayTextColor: accent,
+                dayTextColor: foreground,
+                textDisabledColor: muted,
+                monthTextColor: foreground,
+                arrowColor: accent,
+                textDayFontWeight: "400",
+                textMonthFontWeight: "600",
+                textDayHeaderFontWeight: "500",
+                dotColor: accent,
+                selectedDotColor: accentForeground,
+              }}
+              customHeader={DiaryCalendarHeader}
+              style={{ marginHorizontal: 8 }}
+            />
+
+            <View className="flex-1 gap-4 mt-4 mx-4">
+              <DiaryEventList events={dayEvents} />
+
+              {hasConnections ? (
+                <CalendarConnectionList
+                  connections={connections}
+                  syncingIds={syncingIds}
+                  onSync={syncConnection}
+                  onDisconnect={requestDisconnect}
+                />
+              ) : (
+                <Button
+                  className="text-sm font-medium"
+                  variant="ghost"
+                  onPress={() => setIsManagementSheetOpen(true)}
+                >
+                  Connect a calendar to see your events
+                </Button>
+              )}
+            </View>
           </View>
-
-          <Calendar
-            current={todayIso}
-            onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
-            onMonthChange={(m: DateData) => setVisibleMonth(new Date(m.year, m.month - 1, 1))}
-            markedDates={mergedMarkedDates}
-            markingType="multi-dot"
-            theme={{
-              backgroundColor: "transparent",
-              calendarBackground: "transparent",
-              selectedDayBackgroundColor: accent,
-              selectedDayTextColor: accentForeground,
-              todayTextColor: accent,
-              dayTextColor: foreground,
-              textDisabledColor: muted,
-              monthTextColor: foreground,
-              arrowColor: accent,
-              textDayFontWeight: "400",
-              textMonthFontWeight: "600",
-              textDayHeaderFontWeight: "500",
-              dotColor: accent,
-              selectedDotColor: accentForeground,
-            }}
-            customHeader={DiaryCalendarHeader}
-            style={{ marginHorizontal: 8 }}
-          />
-
-          <View className="flex-1 gap-4 mt-4 mx-4">
-            <DiaryEventList events={dayEvents} />
-
-            {hasConnections ? (
-              <CalendarConnectionList
-                connections={connections}
-                syncingIds={syncingIds}
-                onSync={syncConnection}
-                onDisconnect={requestDisconnect}
-              />
-            ) : (
-              <Button
-                className="text-sm font-medium"
-                variant="ghost"
-                onPress={() => setIsManagementSheetOpen(true)}
-              >
-                Connect a calendar to see your events
-              </Button>
-            )}
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </ScrollShadow>
 
       <ConnectCalendarSheet
         isOpen={isManagementSheetOpen}
@@ -171,6 +194,6 @@ export default function Diary() {
         onConfirm={confirmDisconnect}
         onCancel={cancelDisconnect}
       />
-    </>
+    </View>
   );
 }

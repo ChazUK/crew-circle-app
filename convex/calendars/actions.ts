@@ -161,7 +161,6 @@ export const setEnabledSubCalendars = action({
 export const connectIcal = action({
   args: {
     url: v.string(),
-    label: v.string(),
   },
   handler: async (ctx, args): Promise<{ connectionId: Id<"calendarConnections"> }> => {
     // The connect form advertises Webcal support — webcal:// and webcals://
@@ -178,7 +177,6 @@ export const connectIcal = action({
     const connectionId = await calendarService.connect(ctx, {
       provider: "ical",
       url,
-      label: args.label,
     });
     return { connectionId };
   },

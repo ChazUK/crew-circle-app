@@ -12,7 +12,9 @@ export default {
     version: "1.0.0",
     orientation: "portrait",
     icon: "./src/assets/icons/ios-light.png",
-    scheme: "crewcircle",
+    scheme: googleIosUrlScheme
+      ? ["crewcircle", "com.crewcircle.crewcircleapp", googleIosUrlScheme]
+      : ["crewcircle", "com.crewcircle.crewcircleapp"],
     userInterfaceStyle: "light",
     splash: {
       image: "./src/assets/icons/splash-icon-light.png",

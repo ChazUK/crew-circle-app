@@ -233,6 +233,7 @@ export const GoogleCalendarProvider: CalendarProvider = {
         scope,
       },
       subCalendars,
+      suggestedLabel: userInfo.email,
     };
   },
 

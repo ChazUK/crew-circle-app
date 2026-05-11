@@ -67,12 +67,13 @@ export function createCalendarService(providers: CalendarProviderRegistry) {
       // two-mutation flow (provider wrote the connection row, service
       // wrote the sub-calendar) which could orphan an iCal connection
       // without its synthetic Sub-Calendar on partial failure.
+      const userProvidedLabel = "label" in params ? params.label : undefined;
       const connectionId: Id<"calendarConnections"> = await ctx.runMutation(
         internal.calendars.db.insertCalendarConnection.insertCalendarConnection,
         {
           userId: user._id,
           provider: params.provider,
-          label: params.label,
+          label: userProvidedLabel || result.suggestedLabel || "",
           color,
           blueprint: result.connection,
           subCalendars: result.subCalendars,

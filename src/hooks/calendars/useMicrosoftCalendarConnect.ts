@@ -28,7 +28,7 @@ export function useMicrosoftCalendarConnect() {
       };
     }
 
-    const redirectUri = AuthSession.makeRedirectUri({ scheme: "crewcircle" });
+    const redirectUri = AuthSession.makeRedirectUri({ scheme: "crewcircle", path: "auth" });
 
     const pkceResult = await pkceConnect({
       authEndpoint: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",

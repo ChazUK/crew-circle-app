@@ -6,7 +6,7 @@ type Props = {
   isSubmitting: boolean;
   urlError: string | null;
   onClearUrlError: () => void;
-  onSubmit: (values: { url: string; label: string }) => void;
+  onSubmit: (values: { url: string }) => void;
   onCancel: () => void;
 };
 
@@ -20,13 +20,9 @@ export function ICalConnectForm({
   const form = useForm({
     defaultValues: {
       url: "",
-      label: "",
     },
     onSubmit: ({ value }) => {
-      onSubmit({
-        url: value.url.trim(),
-        label: value.label.trim() || "iCal Calendar",
-      });
+      onSubmit({ url: value.url.trim() });
     },
   });
 
@@ -59,20 +55,6 @@ export function ICalConnectForm({
             </TextField>
           );
         }}
-      </form.Field>
-
-      <form.Field name="label">
-        {(field) => (
-          <TextField>
-            <Label>Label</Label>
-            <Input
-              placeholder="iCal Calendar"
-              value={field.state.value}
-              onChangeText={field.handleChange}
-              onBlur={field.handleBlur}
-            />
-          </TextField>
-        )}
       </form.Field>
 
       <View className="flex-row items-center justify-between">

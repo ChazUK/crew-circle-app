@@ -227,6 +227,7 @@ export const MicrosoftCalendarProvider: CalendarProvider = {
         scope,
       },
       subCalendars,
+      suggestedLabel: externalAccountId,
     };
   },
 
