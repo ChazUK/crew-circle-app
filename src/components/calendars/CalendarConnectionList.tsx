@@ -48,7 +48,7 @@ export function CalendarConnectionList({ connections, syncingIds, onSync, onDisc
   const numSubCalendars = connections
     .map((connection) => connection.subCalendarCount)
     .reduce((a, b) => a + b, 0);
-  const numMarking = connections.filter((c) => c.subCalendarCount > 0).length;
+  // const numMarking = connections.filter((c) => c.subCalendarCount > 0).length;
   const stats = [
     `${numConnections} connections`,
     `${numSubCalendars} sub calendars`,

@@ -83,27 +83,37 @@ describe("completeOnboarding string length validation", () => {
   });
 });
 
-describe("completeOnboarding phone guard", () => {
-  test("throws when user has no phone set", async () => {
+describe("completeOnboarding phone", () => {
+  test("succeeds when user has no phone set", async () => {
     const t = await makeTestUserWithPhone(undefined);
-    await expect(
-      t.withIdentity(identity).mutation(api.users.mutations.completeOnboarding, {
-        firstName: "Alice",
-        lastName: "Smith",
-        userType: "crew",
-      }),
-    ).rejects.toThrow("Cannot complete onboarding: phone is not set.");
+    await t.withIdentity(identity).mutation(api.users.mutations.completeOnboarding, {
+      firstName: "Alice",
+      lastName: "Smith",
+      userType: "crew",
+    });
+    const user = await t.run((ctx) =>
+      ctx.db
+        .query("users")
+        .withIndex("byExternalAuthId", (q) => q.eq("externalAuthId", identity.subject))
+        .unique(),
+    );
+    expect(user?.hasCompletedOnboarding).toBe(true);
   });
 
-  test("throws when user phone is empty string", async () => {
+  test("succeeds when user phone is empty string", async () => {
     const t = await makeTestUserWithPhone("");
-    await expect(
-      t.withIdentity(identity).mutation(api.users.mutations.completeOnboarding, {
-        firstName: "Alice",
-        lastName: "Smith",
-        userType: "crew",
-      }),
-    ).rejects.toThrow("Cannot complete onboarding: phone is not set.");
+    await t.withIdentity(identity).mutation(api.users.mutations.completeOnboarding, {
+      firstName: "Alice",
+      lastName: "Smith",
+      userType: "crew",
+    });
+    const user = await t.run((ctx) =>
+      ctx.db
+        .query("users")
+        .withIndex("byExternalAuthId", (q) => q.eq("externalAuthId", identity.subject))
+        .unique(),
+    );
+    expect(user?.hasCompletedOnboarding).toBe(true);
   });
 
   test("succeeds when user has a phone set", async () => {

@@ -56,6 +56,7 @@
     "expo-sharing": "~55.0.18",
     "expo-splash-screen": "~55.0.20",
     "expo-status-bar": "~55.0.6",
+    "expo-store-review": "~55.0.13",
     "expo-task-manager": "~55.0.15",
     "expo-web-browser": "~55.0.15",
     "heroui-native": "^1.0.2",

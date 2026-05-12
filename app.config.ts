@@ -89,6 +89,8 @@ export default {
         projectId: "baad0bec-08b5-4748-a328-79164048238c",
       },
       EXPO_PUBLIC_CLERK_GOOGLE_IOS_URL_SCHEME: process.env.EXPO_PUBLIC_CLERK_GOOGLE_IOS_URL_SCHEME,
+      appStoreId: process.env.EXPO_PUBLIC_APP_STORE_ID,
+      websiteUrl: "https://crewcircle.app",
     },
   },
 };

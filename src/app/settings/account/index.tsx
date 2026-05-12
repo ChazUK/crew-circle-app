@@ -1,7 +1,7 @@
 import { useUser } from "@clerk/expo";
 import { useRouter } from "expo-router";
 import { ListGroup, PressableFeedback, Separator } from "heroui-native";
-import { CirclePauseIcon, KeyRoundIcon, ShieldCheckIcon, TrashIcon } from "lucide-react-native";
+import { KeyRoundIcon, ShieldCheckIcon, TrashIcon } from "lucide-react-native";
 import { ScrollView, Text, View } from "react-native";
 
 export default function AccountSettings() {
@@ -51,51 +51,61 @@ export default function AccountSettings() {
       <View className="gap-2">
         <Text className="text-sm font-semibold text-muted uppercase">Security</Text>
         <ListGroup>
-          <ListGroup.Item onPress={() => router.push("/settings/account/change-password")}>
-            <ListGroup.ItemPrefix>
-              <KeyRoundIcon size={20} />
-            </ListGroup.ItemPrefix>
-            <ListGroup.ItemContent>
-              <ListGroup.ItemTitle>Change password</ListGroup.ItemTitle>
-            </ListGroup.ItemContent>
-            <ListGroup.ItemSuffix />
-          </ListGroup.Item>
+          <PressableFeedback
+            animation={false}
+            onPress={() => router.push("/settings/account/change-password")}
+          >
+            <PressableFeedback.Scale>
+              <ListGroup.Item disabled>
+                <ListGroup.ItemPrefix>
+                  <KeyRoundIcon size={20} />
+                </ListGroup.ItemPrefix>
+                <ListGroup.ItemContent>
+                  <ListGroup.ItemTitle>Change password</ListGroup.ItemTitle>
+                </ListGroup.ItemContent>
+                <ListGroup.ItemSuffix />
+              </ListGroup.Item>
+            </PressableFeedback.Scale>
+          </PressableFeedback>
 
-          <ListGroup.Item onPress={() => void 0}>
-            <ListGroup.ItemPrefix>
-              <ShieldCheckIcon size={20} />
-            </ListGroup.ItemPrefix>
-            <ListGroup.ItemContent className="flex-row items-center justify-between">
-              <ListGroup.ItemTitle numberOfLines={1}>Two-factor authentication</ListGroup.ItemTitle>
-              <Text numberOfLines={1}>Off</Text>
-            </ListGroup.ItemContent>
-            <ListGroup.ItemSuffix />
-          </ListGroup.Item>
+          <PressableFeedback animation={false} onPress={() => {}}>
+            <PressableFeedback.Scale>
+              <ListGroup.Item disabled>
+                <ListGroup.ItemPrefix>
+                  <ShieldCheckIcon size={20} />
+                </ListGroup.ItemPrefix>
+                <ListGroup.ItemContent className="flex-row items-center justify-between">
+                  <ListGroup.ItemTitle numberOfLines={1}>
+                    Two-factor authentication
+                  </ListGroup.ItemTitle>
+                  <Text numberOfLines={1}>Off</Text>
+                </ListGroup.ItemContent>
+                <ListGroup.ItemSuffix />
+              </ListGroup.Item>
+            </PressableFeedback.Scale>
+          </PressableFeedback>
         </ListGroup>
       </View>
 
       <View className="gap-2">
         <Text className="text-sm font-semibold text-muted uppercase">Danger Zone</Text>
         <ListGroup>
-          <ListGroup.Item onPress={() => router.push("/settings/account/delete-account")}>
-            <ListGroup.ItemPrefix>
-              <CirclePauseIcon size={20} />
-            </ListGroup.ItemPrefix>
-            <ListGroup.ItemContent>
-              <ListGroup.ItemTitle>Deactivate Account</ListGroup.ItemTitle>
-            </ListGroup.ItemContent>
-            <ListGroup.ItemSuffix />
-          </ListGroup.Item>
-
-          <ListGroup.Item onPress={() => router.push("/settings/account/delete-account")}>
-            <ListGroup.ItemPrefix>
-              <TrashIcon size={20} />
-            </ListGroup.ItemPrefix>
-            <ListGroup.ItemContent>
-              <ListGroup.ItemTitle>Delete Account</ListGroup.ItemTitle>
-            </ListGroup.ItemContent>
-            <ListGroup.ItemSuffix />
-          </ListGroup.Item>
+          <PressableFeedback
+            animation={false}
+            onPress={() => router.push("/settings/account/delete-account")}
+          >
+            <PressableFeedback.Scale>
+              <ListGroup.Item disabled>
+                <ListGroup.ItemPrefix>
+                  <TrashIcon size={20} />
+                </ListGroup.ItemPrefix>
+                <ListGroup.ItemContent>
+                  <ListGroup.ItemTitle>Delete Account</ListGroup.ItemTitle>
+                </ListGroup.ItemContent>
+                <ListGroup.ItemSuffix />
+              </ListGroup.Item>
+            </PressableFeedback.Scale>
+          </PressableFeedback>
         </ListGroup>
       </View>
     </ScrollView>
