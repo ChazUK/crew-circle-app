@@ -202,4 +202,22 @@ describe("CalendarService.syncNativeOnOpen", () => {
 
     expect(result.map((row) => row.connectionId)).toEqual([legacyConnectionId]);
   });
+
+  test("device-locked rows are skipped when the caller has no deviceId", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await insertOwner(t);
+    const lockedConnectionId = await insertConnection(t, userId, "native", {
+      deviceId: "ios-device",
+      devicePlatform: "ios",
+    });
+    await insertSubCalendar(t, lockedConnectionId, "ios-cal");
+    const legacyConnectionId = await insertConnection(t, userId, "native");
+    await insertSubCalendar(t, legacyConnectionId, "legacy-cal");
+
+    const result = await t
+      .withIdentity(ownerIdentity)
+      .action(async (ctx) => service.syncNativeOnOpen(ctx));
+
+    expect(result.map((row) => row.connectionId)).toEqual([legacyConnectionId]);
+  });
 });

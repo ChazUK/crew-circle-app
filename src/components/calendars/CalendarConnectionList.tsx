@@ -210,7 +210,13 @@ function CalendarConnectionItem({
         {SHOW_SWITCH && <Switch isSelected />}
         {BUSY_SWITCH && <Switch isSelected />}
         {DISCONNECT && (
-          <Button variant="danger-soft" size="sm" isIconOnly onPress={onDisconnect}>
+          <Button
+            variant="danger-soft"
+            size="sm"
+            isIconOnly
+            isDisabled={isForeignDevice}
+            onPress={onDisconnect}
+          >
             <XIcon size={16} />
           </Button>
         )}
