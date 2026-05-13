@@ -209,13 +209,33 @@ export function createCalendarService(providers: CalendarProviderRegistry) {
     // has no access to the device's calendar store) — this method only
     // applies the 60-second debounce so the client doesn't repeatedly hit
     // the device store when the app is opened in quick succession.
+    //
+    // `deviceId` filters device-locked native connections to the calling
+    // device — native calendar ids are device-local, so a session on
+    // Android must never try to sync ids issued on iOS. Legacy rows
+    // (no deviceId yet) predate device locking and pass through to any
+    // caller; the user can clean them up by reconnecting. A caller
+    // without a deviceId only sees legacy rows, never device-locked
+    // ones — better to skip than risk a cross-device sync.
     async syncNativeOnOpen(
       ctx: ActionCtx,
+      deviceId?: string,
     ): Promise<{ connectionId: Id<"calendarConnections">; nativeCalendarIds: string[] }[]> {
       const connections = await ctx.runQuery(api.calendars.queries.getConnections, {});
       const now = Date.now();
       return connections
         .filter((connection) => connection.provider === "native")
+        .filter((connection) => {
+          // Legacy rows have no deviceId — return them to any caller;
+          // they predate device locking and we don't know which device
+          // they came from. The user can clean them up by reconnecting.
+          if (connection.deviceId == null) return true;
+          // Device-locked rows only sync on the originating device. A
+          // caller without a deviceId can't match one, so the safe
+          // outcome is to skip — syncing iOS-issued calendar ids on
+          // Android would either fail or attach to the wrong calendar.
+          return deviceId != null && connection.deviceId === deviceId;
+        })
         .filter(
           (connection) =>
             connection.lastSyncedAt == null || now - connection.lastSyncedAt >= 60_000,
