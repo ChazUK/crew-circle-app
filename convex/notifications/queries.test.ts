@@ -76,6 +76,34 @@ describe("myUnreadCount", () => {
       .query(api.notifications.queries.myUnreadCount, {});
     expect(result).toBe(1);
   });
+
+  test("caps at 100 so the index scan stays bounded", async () => {
+    const t = convexTest(schema, modules);
+    const aliceId = await insertUser(t, "clerk_alice", "alice@example.com");
+    const now = Date.now();
+    await t.run(async (ctx) => {
+      const inviteId = await ctx.db.insert("contactInvites", {
+        fromUserId: aliceId,
+        target: { kind: "user", userId: aliceId },
+        targetUserId: aliceId,
+        status: "pending",
+        createdAt: now,
+      });
+      for (let i = 0; i < 150; i++) {
+        await ctx.db.insert("notifications", {
+          userId: aliceId,
+          kind: "contact_invite_received",
+          payload: { inviteId },
+          createdAt: now + i,
+        });
+      }
+    });
+
+    const result = await t
+      .withIdentity(aliceIdentity)
+      .query(api.notifications.queries.myUnreadCount, {});
+    expect(result).toBe(100);
+  });
 });
 
 describe("myUnreadIncomingInviteCount", () => {

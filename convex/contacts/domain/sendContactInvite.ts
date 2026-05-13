@@ -145,12 +145,12 @@ const sendPhoneInvite = async (
   if (!phone.startsWith("+")) throw new ConvexError("invalid_phone");
   if (me.phone && me.phone === phone) throw new ConvexError("self_invite");
 
-  const matchingUsers = await ctx.db
+  const existingUser = await ctx.db
     .query("users")
     .withIndex("byPhone", (q) => q.eq("phone", phone))
-    .collect();
-  if (matchingUsers.length === 1) {
-    return sendUserInvite(ctx, me, matchingUsers[0]._id, message);
+    .unique();
+  if (existingUser) {
+    return sendUserInvite(ctx, me, existingUser._id, message);
   }
 
   const existing = await ctx.db

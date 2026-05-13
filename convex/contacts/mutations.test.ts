@@ -186,6 +186,48 @@ describe("sendContactInvite", () => {
     expect(invites[0].targetEmail).toBe("stranger@example.com");
     await drain(t);
   });
+
+  test("invite by phone matches an existing user via byPhone index", async () => {
+    const t = setupTest();
+    await insertUser(t, "clerk_alice", "alice@example.com");
+    const bobId = await insertUser(t, "clerk_bob", "bob@example.com", "+15551234567");
+
+    await t
+      .withIdentity(aliceIdentity)
+      .mutation(api.contacts.mutations.sendContactInvite, { phone: "+15551234567" });
+
+    const invites = await t.run((ctx) => ctx.db.query("contactInvites").collect());
+    expect(invites).toHaveLength(1);
+    expect(invites[0].targetUserId).toBe(bobId);
+    await drain(t);
+  });
+
+  test("invite by phone persists external row when no matching user", async () => {
+    const t = setupTest();
+    await insertUser(t, "clerk_alice", "alice@example.com");
+
+    await t
+      .withIdentity(aliceIdentity)
+      .mutation(api.contacts.mutations.sendContactInvite, { phone: "+15550000000" });
+
+    const invites = await t.run((ctx) => ctx.db.query("contactInvites").collect());
+    expect(invites).toHaveLength(1);
+    expect(invites[0].targetUserId).toBeUndefined();
+    expect(invites[0].targetPhone).toBe("+15550000000");
+  });
+
+  test("invite by phone throws when multiple users share the phone (clerk invariant violated)", async () => {
+    const t = setupTest();
+    await insertUser(t, "clerk_alice", "alice@example.com");
+    await insertUser(t, "clerk_bob", "bob@example.com", "+15551234567");
+    await insertUser(t, "clerk_carol", "carol@example.com", "+15551234567");
+
+    await expect(
+      t
+        .withIdentity(aliceIdentity)
+        .mutation(api.contacts.mutations.sendContactInvite, { phone: "+15551234567" }),
+    ).rejects.toThrow();
+  });
 });
 
 describe("acceptContactInvite", () => {
