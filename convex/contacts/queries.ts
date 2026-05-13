@@ -93,42 +93,60 @@ export const searchUsers = query({
     const me = await getUserByExternalId(ctx, identity.subject);
     if (!me) return [];
 
-    const needle = args.query.trim().toLowerCase();
+    const needle = args.query.trim();
     if (needle.length < 2) return [];
     const limit = Math.min(args.limit ?? 20, 50);
+    const fetchPerIndex = limit * 3;
 
-    const candidates = await ctx.db.query("users").take(200);
+    const [byEmail, byFirstName, byLastName] = await Promise.all([
+      ctx.db
+        .query("users")
+        .withSearchIndex("searchByEmail", (q) => q.search("email", needle))
+        .take(fetchPerIndex),
+      ctx.db
+        .query("users")
+        .withSearchIndex("searchByFirstName", (q) => q.search("firstName", needle))
+        .take(fetchPerIndex),
+      ctx.db
+        .query("users")
+        .withSearchIndex("searchByLastName", (q) => q.search("lastName", needle))
+        .take(fetchPerIndex),
+    ]);
+
+    const seen = new Set<Id<"users">>();
+    const candidates: Doc<"users">[] = [];
+    for (const user of [...byEmail, ...byFirstName, ...byLastName]) {
+      if (user._id === me._id) continue;
+      if (seen.has(user._id)) continue;
+      seen.add(user._id);
+      candidates.push(user);
+    }
+
+    const [outgoingPending, incomingPending] = await Promise.all([
+      ctx.db
+        .query("contactInvites")
+        .withIndex("byFromUserAndStatus", (q) => q.eq("fromUserId", me._id).eq("status", "pending"))
+        .collect(),
+      ctx.db
+        .query("contactInvites")
+        .withIndex("byTargetUserAndStatus", (q) =>
+          q.eq("targetUserId", me._id).eq("status", "pending"),
+        )
+        .collect(),
+    ]);
+    const outgoingTargetIds = new Set(
+      outgoingPending.map((row) => row.targetUserId).filter((id): id is Id<"users"> => id != null),
+    );
+    const incomingFromIds = new Set(incomingPending.map((row) => row.fromUserId));
+
     const results: Array<{ user: Doc<"users">; state: "none" | "pending" | "contact" }> = [];
     for (const user of candidates) {
-      if (user._id === me._id) continue;
-      const name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.toLowerCase().trim();
-      const email = user.email.toLowerCase();
-      if (!name.includes(needle) && !email.includes(needle)) continue;
-
       const contact = await findContactPair(ctx, me._id, user._id);
       let state: "none" | "pending" | "contact" = "none";
       if (contact) {
         state = "contact";
-      } else {
-        const pending = await ctx.db
-          .query("contactInvites")
-          .withIndex("byFromUserAndStatus", (q) =>
-            q.eq("fromUserId", me._id).eq("status", "pending"),
-          )
-          .collect();
-        if (pending.some((row) => row.targetUserId === user._id)) {
-          state = "pending";
-        } else {
-          const incoming = await ctx.db
-            .query("contactInvites")
-            .withIndex("byTargetUserAndStatus", (q) =>
-              q.eq("targetUserId", me._id).eq("status", "pending"),
-            )
-            .collect();
-          if (incoming.some((row) => row.fromUserId === user._id)) {
-            state = "pending";
-          }
-        }
+      } else if (outgoingTargetIds.has(user._id) || incomingFromIds.has(user._id)) {
+        state = "pending";
       }
       results.push({ user, state });
       if (results.length >= limit) break;

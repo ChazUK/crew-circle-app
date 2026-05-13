@@ -34,7 +34,8 @@ async function insertUser(
       email,
       hasCompletedOnboarding: true,
       isPublic: false,
-      ...(firstName ? { firstName } : {}),
+      firstName: firstName ?? "Unknown",
+      lastName: "Test",
     }),
   );
 }

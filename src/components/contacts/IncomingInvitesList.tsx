@@ -14,15 +14,25 @@ export function IncomingInvitesList() {
   const invites = useQuery(api.contacts.queries.listMyIncomingInvites, {});
   const acceptInvite = useAcceptContactInvite();
   const declineInvite = useDeclineContactInvite();
-  const [busyId, setBusyId] = useState<Id<"contactInvites"> | null>(null);
+  const [busyIds, setBusyIds] = useState<ReadonlySet<Id<"contactInvites">>>(new Set());
 
   const handle = async (inviteId: Id<"contactInvites">, action: "accept" | "decline") => {
-    setBusyId(inviteId);
+    setBusyIds((prev) => {
+      const next = new Set(prev);
+      next.add(inviteId);
+      return next;
+    });
     try {
       if (action === "accept") await acceptInvite(inviteId);
       else await declineInvite(inviteId);
+    } catch (err) {
+      console.error(`[IncomingInvitesList] ${action} failed`, err);
     } finally {
-      setBusyId(null);
+      setBusyIds((prev) => {
+        const next = new Set(prev);
+        next.delete(inviteId);
+        return next;
+      });
     }
   };
 
@@ -50,7 +60,7 @@ export function IncomingInvitesList() {
             key={invite._id}
             from={from}
             message={invite.message ?? undefined}
-            isBusy={busyId === invite._id}
+            isBusy={busyIds.has(invite._id)}
             onAccept={() => void handle(invite._id, "accept")}
             onDecline={() => void handle(invite._id, "decline")}
           />

@@ -2,11 +2,13 @@ import { Doc, Id } from "@convex/_generated/dataModel";
 import { MutationCtx } from "@convex/_generated/server";
 import { ConvexError } from "convex/values";
 
+import { internal } from "../../_generated/api";
 import { emitContactInviteNotification } from "../../notifications/domain/emitContactInviteNotification";
 import { getUserByExternalId } from "../../users/db/getUser";
 import { findContactPair } from "../db/findContactPair";
 import { findPendingInviteBetween } from "../db/findPendingInviteBetween";
 import { acceptContactInvite } from "./acceptContactInvite";
+import { inviterDisplayName } from "./inviterDisplayName";
 
 type Args = {
   targetUserId?: Id<"users">;
@@ -117,7 +119,14 @@ const sendEmailInvite = async (
     ...(message && { message }),
   });
 
-  // TODO: deliver email invite via provider (Resend/SendGrid/etc.)
+  await ctx.scheduler.runAfter(0, internal.emails.sendContactInviteEmail.sendContactInviteEmail, {
+    inviteId,
+    recipientEmail: email,
+    inviterName: inviterDisplayName(me),
+    inviterEmail: me.email,
+    ...(message && { message }),
+  });
+
   return { autoAccepted: false, inviteId };
 };
 
@@ -131,12 +140,12 @@ const sendPhoneInvite = async (
   if (!phone.startsWith("+")) throw new ConvexError("invalid_phone");
   if (me.phone && me.phone === phone) throw new ConvexError("self_invite");
 
-  const existingUser = await ctx.db
+  const matchingUsers = await ctx.db
     .query("users")
-    .filter((q) => q.eq(q.field("phone"), phone))
-    .first();
-  if (existingUser) {
-    return sendUserInvite(ctx, me, existingUser._id, message);
+    .withIndex("byPhone", (q) => q.eq("phone", phone))
+    .collect();
+  if (matchingUsers.length === 1) {
+    return sendUserInvite(ctx, me, matchingUsers[0]._id, message);
   }
 
   const existing = await ctx.db

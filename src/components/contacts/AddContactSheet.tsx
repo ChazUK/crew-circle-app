@@ -21,13 +21,26 @@ export function AddContactSheet({ isOpen, onClose }: Props) {
   const [mode, setMode] = useState<Mode>("search");
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const results = useContactsSearch(query);
   const sendInvite = useSendContactInvite();
 
   const handleInvite = async (userId: string) => {
     setBusyId(userId);
+    setInviteError(null);
     try {
       await sendInvite({ targetUserId: userId as never });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("invite_exists")) {
+        setInviteError("You've already invited this person.");
+      } else if (msg.includes("already_contact")) {
+        setInviteError("This person is already a contact.");
+      } else if (msg.includes("self_invite")) {
+        setInviteError("You can't invite yourself.");
+      } else {
+        setInviteError("Could not send the invite. Try again.");
+      }
     } finally {
       setBusyId(null);
     }
@@ -36,6 +49,7 @@ export function AddContactSheet({ isOpen, onClose }: Props) {
   const handleClose = () => {
     setMode("search");
     setQuery("");
+    setInviteError(null);
     onClose();
   };
 
@@ -76,6 +90,9 @@ export function AddContactSheet({ isOpen, onClose }: Props) {
                   onChange={setQuery}
                   placeholder="Search by name or email"
                 />
+                {inviteError ? (
+                  <Text className="px-3 text-sm text-danger">{inviteError}</Text>
+                ) : null}
                 {query.trim().length < 2 ? (
                   <Text className="px-3 text-sm text-muted">Type at least 2 characters.</Text>
                 ) : results === undefined ? (

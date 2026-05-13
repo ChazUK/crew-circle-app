@@ -28,15 +28,24 @@ export const convertExternalInvitesForNewUser = async (
     }
   }
 
+  const now = Date.now();
+  const convertedSenders = new Set<Id<"users">>();
+
   for (const [inviteId, source] of matches) {
     const invite = await ctx.db.get(inviteId);
     if (!invite || invite.status !== "pending") continue;
 
     const existingContact = await findContactPair(ctx, invite.fromUserId, args.userId);
     if (existingContact) {
-      await ctx.db.patch(inviteId, { status: "canceled", respondedAt: Date.now() });
+      await ctx.db.patch(inviteId, { status: "canceled", respondedAt: now });
       continue;
     }
+
+    if (convertedSenders.has(invite.fromUserId)) {
+      await ctx.db.patch(inviteId, { status: "canceled", respondedAt: now });
+      continue;
+    }
+    convertedSenders.add(invite.fromUserId);
 
     await ctx.db.patch(inviteId, {
       target: { kind: "user", userId: args.userId },
