@@ -95,6 +95,7 @@ export default {
       termsUrl: "https://policies.google.com/terms",
       sentry: {
         dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+        environment: process.env.EAS_BUILD_PROFILE ?? "development",
       },
     },
   },
