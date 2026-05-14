@@ -68,22 +68,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const SelfWithNickname: Story = {
-  args: { profile: selfWithNicknameProfile, onEditIdentity: () => {} },
-};
-
-export const SelfWithoutNickname: Story = {
-  args: { profile: selfWithoutNicknameProfile, onEditIdentity: () => {} },
-};
-
-export const Contact: Story = {
-  args: { profile: contactProfile },
-};
-
-export const PublicCard: Story = {
-  args: { profile: publicCardProfile },
-};
-
-export const PMSelf: Story = {
-  args: { profile: pmSelfProfile, onEditIdentity: () => {} },
-};
+export const SelfWithNickname: Story = { args: { profile: selfWithNicknameProfile } };
+export const SelfWithoutNickname: Story = { args: { profile: selfWithoutNicknameProfile } };
+export const Contact: Story = { args: { profile: contactProfile } };
+export const PublicCard: Story = { args: { profile: publicCardProfile } };
+export const PMSelf: Story = { args: { profile: pmSelfProfile } };

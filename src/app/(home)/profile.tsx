@@ -37,7 +37,7 @@ export default function ProfileScreen() {
         </View>
       ) : (
         <View className="flex-1">
-          <Profile profile={profile} onEditIdentity={() => router.push("/profile/edit/identity")} />
+          <Profile profile={profile} onEditProfile={() => router.push("/profile/edit")} />
         </View>
       )}
 

@@ -1,11 +1,9 @@
 import type { ViewableProfile } from "@shared/profile/viewableProfile";
-import { Avatar, Button } from "heroui-native";
-import { PencilIcon } from "lucide-react-native";
+import { Avatar } from "heroui-native";
 import { Text, View } from "react-native";
 
 type Props = {
   profile: ViewableProfile;
-  onEditIdentity?: () => void;
 };
 
 function getInitials(profile: ViewableProfile) {
@@ -25,10 +23,8 @@ function getDisplayName(profile: ViewableProfile) {
   return fullName;
 }
 
-export function IdentitySection({ profile, onEditIdentity }: Props) {
+export function IdentitySection({ profile }: Props) {
   const displayName = getDisplayName(profile);
-  const isSelf = profile.mode === "self" || profile.mode === "pm-self";
-  const canEdit = isSelf && onEditIdentity !== undefined;
 
   return (
     <View className="items-center gap-3">
@@ -38,21 +34,9 @@ export function IdentitySection({ profile, onEditIdentity }: Props) {
         ) : null}
         <Avatar.Fallback>{getInitials(profile)}</Avatar.Fallback>
       </Avatar>
-      <View className="flex-row items-center gap-2">
-        {displayName ? (
-          <Text className="text-lg font-semibold text-foreground">{displayName}</Text>
-        ) : null}
-        {canEdit ? (
-          <Button
-            variant="ghost"
-            isIconOnly
-            onPress={onEditIdentity}
-            accessibilityLabel="Edit identity"
-          >
-            <PencilIcon size={16} />
-          </Button>
-        ) : null}
-      </View>
+      {displayName ? (
+        <Text className="text-lg font-semibold text-foreground">{displayName}</Text>
+      ) : null}
     </View>
   );
 }
