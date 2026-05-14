@@ -398,24 +398,30 @@ setup_agent_worktree() {
   local agent_id="$1" branch="$2"
   local worktree="${WORKTREES_DIR}/agent-${agent_id}"
 
+  # All git operations below redirect stdout to /dev/null. The function echoes the
+  # worktree path on stdout for the caller to capture — any stray stdout from git
+  # (e.g. "Deleted branch X", "branch 'X' set up to track...") would pollute it and
+  # cause the agent's `cd "$worktree"` to fail, leaving claude running in the
+  # source repo root and committing changes onto main.
+
   # Remove stale worktree if present
-  git -C "$REPO_ROOT" worktree remove --force "$worktree" 2>/dev/null || true
+  git -C "$REPO_ROOT" worktree remove --force "$worktree" >/dev/null 2>&1 || true
   rm -rf "$worktree"
 
-  git -C "$REPO_ROOT" fetch origin main --quiet 2>/dev/null || \
+  git -C "$REPO_ROOT" fetch origin main --quiet >/dev/null 2>&1 || \
     warn "Could not fetch origin/main — working from local main"
 
   # Delete stale remote-tracking or local branch if it exists
-  git -C "$REPO_ROOT" branch -D "$branch" 2>/dev/null || true
+  git -C "$REPO_ROOT" branch -D "$branch" >/dev/null 2>&1 || true
 
-  if ! git -C "$REPO_ROOT" worktree add -b "$branch" "$worktree" origin/main 2>/dev/null; then
-    git -C "$REPO_ROOT" worktree add -b "$branch" "$worktree" main
+  if ! git -C "$REPO_ROOT" worktree add -b "$branch" "$worktree" origin/main >/dev/null 2>&1; then
+    git -C "$REPO_ROOT" worktree add -b "$branch" "$worktree" main >/dev/null 2>&1
   fi
 
   # Set the new branch's upstream to origin/main so `git status`, `git pull`, and the
   # eventual `git checkout` after worktree removal all behave as expected. Without this,
   # the branch lives in a limbo state until the agent's first push.
-  git -C "$worktree" branch --set-upstream-to=origin/main "$branch" 2>/dev/null || true
+  git -C "$worktree" branch --set-upstream-to=origin/main "$branch" >/dev/null 2>&1 || true
 
   echo "$worktree"
 }
@@ -436,8 +442,14 @@ teardown_agent_worktree() {
 # Local adapter: run claude directly in the worktree, bounded by AGENT_TIMEOUT.
 run_claude_local() {
   local worktree="$1" prompt_file="$2" log_file="$3"
+  # Refuse to run if the worktree doesn't exist — prevents claude from falling back to
+  # the source repo root and committing onto main.
+  if [[ ! -d "$worktree/.git" && ! -f "$worktree/.git" ]]; then
+    err "run_claude_local: worktree '$worktree' is not a git worktree — refusing to run"
+    return 1
+  fi
   (
-    cd "$worktree"
+    cd "$worktree" || { err "run_claude_local: cd '$worktree' failed"; exit 1; }
     # Read prompt into a variable — avoids re-expansion of special chars when passing to -p
     local prompt
     prompt=$(cat "$prompt_file")
