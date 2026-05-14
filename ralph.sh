@@ -239,9 +239,9 @@ all_blockers_resolved() {
 
   [[ -z "$blockers" ]] && return 0
 
-  for num in $blockers; do
-    local state
-    state=$(gh issue view "$num" --comments --repo "$REPO" --json state --jq '.state' 2>/dev/null || echo "OPEN")
+  local blocker_num state
+  for blocker_num in $blockers; do
+    state=$(gh issue view "$blocker_num" --comments --repo "$REPO" --json state --jq '.state' 2>/dev/null || echo "OPEN")
     if [[ "$state" != "CLOSED" ]]; then
       return 1
     fi
