@@ -3,6 +3,8 @@ import React from "react";
 import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { reportError } from "@/lib/observability/reportError";
+
 type Props = {
   children: React.ReactNode;
 };
@@ -41,7 +43,10 @@ export class AppErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo): void {
-    console.error("[ErrorBoundary]", error, info);
+    reportError(error, {
+      tags: { area: "ui.errorBoundary" },
+      extra: { componentStack: info.componentStack },
+    });
   }
 
   render() {
