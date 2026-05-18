@@ -26,18 +26,27 @@ const selfWithNicknameProfile: ViewableProfile = {
   mode: "self",
   ...baseCrew,
   nickname: "Ace",
+  bio: undefined,
+  website: undefined,
+  imdbId: undefined,
 };
 
 const selfWithoutNicknameProfile: ViewableProfile = {
   mode: "self",
   ...baseCrew,
   nickname: undefined,
+  bio: undefined,
+  website: undefined,
+  imdbId: undefined,
 };
 
 const contactProfile: ViewableProfile = {
   mode: "contact",
   ...baseCrew,
   nickname: "Ace",
+  bio: undefined,
+  website: undefined,
+  imdbId: undefined,
 };
 
 const publicCardProfile: ViewableProfile = {

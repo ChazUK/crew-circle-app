@@ -2,7 +2,7 @@ import { api } from "@convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { ListGroup, PressableFeedback, Spinner } from "heroui-native";
-import { BriefcaseIcon, ChevronRightIcon, UserIcon } from "lucide-react-native";
+import { BriefcaseIcon, ChevronRightIcon, FileTextIcon, UserIcon } from "lucide-react-native";
 import { ScrollView, View } from "react-native";
 
 import { Title } from "@/components/ui/Title";
@@ -31,6 +31,9 @@ export default function EditProfileHubScreen() {
 
   const deptRolesPreview =
     profile.userType === "crew" && profile.department ? profile.department : "Not added";
+
+  const bioPreview =
+    profile.mode === "self" && profile.bio ? profile.bio.slice(0, 40) : "Not added";
 
   return (
     <ScrollView className="flex-1" contentContainerClassName="p-4 gap-4">
@@ -73,6 +76,23 @@ export default function EditProfileHubScreen() {
             </PressableFeedback.Scale>
           </PressableFeedback>
         ) : null}
+
+        <PressableFeedback animation={false} onPress={() => router.push("/profile/edit/bio-links")}>
+          <PressableFeedback.Scale>
+            <ListGroup.Item>
+              <ListGroup.ItemPrefix>
+                <FileTextIcon size={20} />
+              </ListGroup.ItemPrefix>
+              <ListGroup.ItemContent>
+                <ListGroup.ItemTitle>Bio & Links</ListGroup.ItemTitle>
+                <ListGroup.ItemDescription>{bioPreview}</ListGroup.ItemDescription>
+              </ListGroup.ItemContent>
+              <ListGroup.ItemSuffix>
+                <ChevronRightIcon size={16} />
+              </ListGroup.ItemSuffix>
+            </ListGroup.Item>
+          </PressableFeedback.Scale>
+        </PressableFeedback>
       </ListGroup>
     </ScrollView>
   );

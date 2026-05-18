@@ -36,6 +36,9 @@ export const getMyProfile = query({
         userType: "crew",
         department: viewer.department,
         roles: viewer.roles,
+        bio: viewer.bio,
+        website: viewer.website,
+        imdbId: viewer.imdbId,
       };
     }
 
@@ -80,16 +83,26 @@ export const getViewableProfile = query({
     if (visibility.mode === "hidden") return null;
 
     if (subject.userType === "crew") {
-      return {
-        mode: visibility.mode as "self" | "contact" | "public-card",
+      const mode = visibility.mode as "self" | "contact" | "public-card";
+      const base = {
         userId: subject._id,
         firstName: subject.firstName,
         lastName: subject.lastName,
         nickname: subject.nickname,
         profilePictureUrl: subject.profilePictureUrl,
-        userType: "crew",
+        userType: "crew" as const,
         department: subject.department,
         roles: subject.roles,
+      };
+      if (mode === "public-card") {
+        return { mode, ...base };
+      }
+      return {
+        mode,
+        ...base,
+        bio: subject.bio,
+        website: subject.website,
+        imdbId: subject.imdbId,
       };
     }
 

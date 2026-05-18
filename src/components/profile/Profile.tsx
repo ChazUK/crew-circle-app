@@ -1,8 +1,10 @@
 import type { ViewableProfile } from "@shared/profile/viewableProfile";
 import { ScrollView } from "react-native";
 
+import { BioSection } from "./sections/BioSection";
 import { DepartmentRolesSection } from "./sections/DepartmentRolesSection";
 import { IdentitySection } from "./sections/IdentitySection";
+import { LinksSection } from "./sections/LinksSection";
 
 type Props = {
   profile: ViewableProfile;
@@ -13,6 +15,8 @@ export function Profile({ profile }: Props) {
     <ScrollView contentContainerClassName="gap-4 p-4">
       <IdentitySection profile={profile} />
       <DepartmentRolesSection profile={profile} />
+      <BioSection profile={profile} />
+      <LinksSection profile={profile} />
     </ScrollView>
   );
 }

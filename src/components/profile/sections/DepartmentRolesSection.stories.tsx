@@ -19,6 +19,9 @@ const selfWithData: ViewableProfile = {
   ...baseCrew,
   department: "Camera",
   roles: ["Director of Photography", "1st AC"],
+  bio: undefined,
+  website: undefined,
+  imdbId: undefined,
 };
 
 const selfEmpty: ViewableProfile = {
@@ -26,6 +29,9 @@ const selfEmpty: ViewableProfile = {
   ...baseCrew,
   department: undefined,
   roles: undefined,
+  bio: undefined,
+  website: undefined,
+  imdbId: undefined,
 };
 
 const contact: ViewableProfile = {
@@ -33,6 +39,9 @@ const contact: ViewableProfile = {
   ...baseCrew,
   department: "Sound",
   roles: ["Production Sound Mixer", "Sound Assistant"],
+  bio: undefined,
+  website: undefined,
+  imdbId: undefined,
 };
 
 const publicCard: ViewableProfile = {
