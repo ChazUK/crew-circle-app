@@ -28,5 +28,6 @@
         ]
       }
     ]
-  }
+  },
+  "enabledMcpjsonServers": ["heroui-native", "container-use"]
 }
