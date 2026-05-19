@@ -36,7 +36,7 @@ export const User = {
   website: v.optional(v.string()),
   imdbUrl: v.optional(v.string()),
   imdbId: v.optional(v.string()),
-  cvUrl: v.optional(v.string()),
+  cvFileId: v.optional(v.id("_storage")),
   specialSkills: v.optional(v.array(v.string())),
   spokenLanguages: v.optional(v.array(v.object({ code: v.string(), fluency: v.string() }))),
   passports: v.optional(v.array(v.string())),

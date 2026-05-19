@@ -3,6 +3,7 @@ import { ScrollView } from "react-native";
 
 import { usePictureUpload } from "./PictureUploadFlow";
 import { BioSection } from "./sections/BioSection";
+import { CvSection } from "./sections/CvSection";
 import { DepartmentRolesSection } from "./sections/DepartmentRolesSection";
 import { IdentitySection } from "./sections/IdentitySection";
 import { LanguagesSection } from "./sections/LanguagesSection";
@@ -28,6 +29,7 @@ export function Profile({ profile }: Props) {
       <LocationSection profile={profile} />
       <BioSection profile={profile} />
       <LinksSection profile={profile} />
+      <CvSection profile={profile} />
     </ScrollView>
   );
 }

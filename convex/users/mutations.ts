@@ -21,7 +21,6 @@ const updateProfileSchema = z.object({
   bio: z.string().max(1000).optional(),
   website: httpUrl.optional(),
   imdbUrl: httpUrl.optional(),
-  cvUrl: httpUrl.optional(),
 });
 
 export const upsertUser = mutation({
@@ -98,7 +97,6 @@ export const updateProfile = mutation({
     bio: v.optional(v.string()),
     website: v.optional(v.string()),
     imdbUrl: v.optional(v.string()),
-    cvUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -113,7 +111,6 @@ export const updateProfile = mutation({
       ...(args.bio !== undefined && { bio: args.bio }),
       ...(args.website !== undefined && { website: args.website }),
       ...(args.imdbUrl !== undefined && { imdbUrl: args.imdbUrl }),
-      ...(args.cvUrl !== undefined && { cvUrl: args.cvUrl }),
     });
   },
 });

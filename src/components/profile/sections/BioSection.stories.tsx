@@ -16,6 +16,7 @@ const baseCrew = {
   roles: ["Director of Photography"],
   website: undefined,
   imdbId: undefined,
+  cvUrl: undefined,
   city: undefined,
   country: undefined,
 };
