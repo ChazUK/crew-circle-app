@@ -351,21 +351,11 @@ describe("updateProfile URL validation", () => {
     ).rejects.toThrow("Invalid URL");
   });
 
-  test("rejects plain string without protocol as cvUrl", async () => {
-    const t = await makeTestWithUser();
-    await expect(
-      t.withIdentity(identity).mutation(api.users.mutations.updateProfile, {
-        cvUrl: "my-cv",
-      }),
-    ).rejects.toThrow("Invalid URL");
-  });
-
   test("accepts valid https:// URL", async () => {
     const t = await makeTestWithUser();
     await t.withIdentity(identity).mutation(api.users.mutations.updateProfile, {
       website: "https://example.com",
       imdbUrl: "https://www.imdb.com/name/nm0000001",
-      cvUrl: "https://docs.example.com/my-cv.pdf",
     });
   });
 

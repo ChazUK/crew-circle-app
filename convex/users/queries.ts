@@ -7,7 +7,7 @@ import { query } from "../_generated/server";
 import { getUserByExternalId } from "./db/getUser";
 import { resolveProfileVisibility } from "./lib/resolveProfileVisibility";
 
-async function resolveProfilePictureUrl(
+async function resolveStorageUrl(
   ctx: QueryCtx,
   fileId: Id<"_storage"> | undefined,
 ): Promise<string | undefined> {
@@ -35,9 +35,10 @@ export const getMyProfile = query({
 
     if (viewer.userType === undefined) return null;
 
-    const profilePictureUrl = await resolveProfilePictureUrl(ctx, viewer.profilePictureFileId);
+    const profilePictureUrl = await resolveStorageUrl(ctx, viewer.profilePictureFileId);
 
     if (viewer.userType === "crew") {
+      const cvUrl = await resolveStorageUrl(ctx, viewer.cvFileId);
       return {
         mode: "self",
         userId: viewer._id,
@@ -51,6 +52,7 @@ export const getMyProfile = query({
         bio: viewer.bio,
         website: viewer.website,
         imdbId: viewer.imdbId,
+        cvUrl,
         city: viewer.city,
         country: viewer.country,
         startYearInDepartment: viewer.startYearInDepartment,
@@ -99,7 +101,7 @@ export const getViewableProfile = query({
 
     if (visibility.mode === "hidden") return null;
 
-    const profilePictureUrl = await resolveProfilePictureUrl(ctx, subject.profilePictureFileId);
+    const profilePictureUrl = await resolveStorageUrl(ctx, subject.profilePictureFileId);
 
     if (subject.userType === "crew") {
       const mode = visibility.mode as "self" | "contact" | "public-card";
@@ -118,12 +120,14 @@ export const getViewableProfile = query({
       if (mode === "public-card") {
         return { mode, ...base };
       }
+      const cvUrl = await resolveStorageUrl(ctx, subject.cvFileId);
       return {
         mode,
         ...base,
         bio: subject.bio,
         website: subject.website,
         imdbId: subject.imdbId,
+        cvUrl,
         startYearInDepartment: subject.startYearInDepartment,
         productionTypes: subject.productionTypes,
         spokenLanguages: subject.spokenLanguages,

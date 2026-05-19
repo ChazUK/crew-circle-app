@@ -19,6 +19,7 @@ type BioLinks = {
   bio: string | undefined;
   website: string | undefined;
   imdbId: string | undefined;
+  cvUrl: string | undefined;
 };
 
 type SpokenLanguageEntry = {

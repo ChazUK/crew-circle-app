@@ -17,6 +17,7 @@ const baseCrew = {
   bio: undefined,
   website: undefined,
   imdbId: undefined,
+  cvUrl: undefined,
   city: undefined,
   country: undefined,
   productionTypes: undefined,

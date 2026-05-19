@@ -3,7 +3,7 @@ import type { ViewableProfile } from "@shared/profile/viewableProfile";
 import type { Meta, StoryObj } from "@storybook/react-native";
 import { View } from "react-native";
 
-import { LanguagesSection } from "./LanguagesSection";
+import { CvSection } from "./CvSection";
 
 const baseCrew = {
   userId: "user_1" as Id<"users">,
@@ -14,58 +14,45 @@ const baseCrew = {
   nickname: undefined,
   department: "Camera" as const,
   roles: ["Director of Photography"],
+  website: undefined,
+  imdbId: undefined,
   city: undefined,
   country: undefined,
 };
 
-const selfWithData: ViewableProfile = {
+const selfWithCv: ViewableProfile = {
   mode: "self",
   ...baseCrew,
   bio: undefined,
-  website: undefined,
-  imdbId: undefined,
-  cvUrl: undefined,
+  cvUrl: "https://storage.example.com/cv.pdf",
   startYearInDepartment: undefined,
   productionTypes: undefined,
-  spokenLanguages: [
-    { code: "fr", fluency: "fluent" },
-    { code: "en", fluency: "native" },
-    { code: "de", fluency: "basic" },
-    { code: "es", fluency: "conversational" },
-    { code: "ja", fluency: "professional" },
-  ],
+  spokenLanguages: undefined,
 };
 
 const selfEmpty: ViewableProfile = {
   mode: "self",
   ...baseCrew,
   bio: undefined,
-  website: undefined,
-  imdbId: undefined,
   cvUrl: undefined,
   startYearInDepartment: undefined,
   productionTypes: undefined,
   spokenLanguages: undefined,
 };
 
-const contactWithData: ViewableProfile = {
+const contactWithCv: ViewableProfile = {
   mode: "contact",
   ...baseCrew,
   bio: undefined,
-  website: undefined,
-  imdbId: undefined,
-  cvUrl: undefined,
+  cvUrl: "https://storage.example.com/cv.pdf",
   startYearInDepartment: undefined,
   productionTypes: undefined,
-  spokenLanguages: [
-    { code: "ar", fluency: "native" },
-    { code: "en", fluency: "professional" },
-  ],
+  spokenLanguages: undefined,
 };
 
 const meta = {
-  title: "Profile/LanguagesSection",
-  component: LanguagesSection,
+  title: "Profile/CvSection",
+  component: CvSection,
   decorators: [
     (Story) => (
       <View style={{ flex: 1, padding: 16 }}>
@@ -74,12 +61,12 @@ const meta = {
     ),
   ],
   tags: ["autodocs"],
-  args: { profile: selfWithData },
-} satisfies Meta<typeof LanguagesSection>;
+  args: { profile: selfWithCv },
+} satisfies Meta<typeof CvSection>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const SelfWithData: Story = { args: { profile: selfWithData } };
+export const SelfWithCv: Story = { args: { profile: selfWithCv } };
 export const SelfEmpty: Story = { args: { profile: selfEmpty } };
-export const ContactWithData: Story = { args: { profile: contactWithData } };
+export const ContactWithCv: Story = { args: { profile: contactWithCv } };

@@ -7,6 +7,7 @@ import {
   CalendarIcon,
   ChevronRightIcon,
   ClapperboardIcon,
+  FileIcon,
   FileTextIcon,
   LanguagesIcon,
   MapPinIcon,
@@ -60,6 +61,8 @@ export default function EditProfileHubScreen() {
 
   const bioPreview =
     profile.mode === "self" && profile.bio ? profile.bio.slice(0, 40) : "Not added";
+
+  const cvPreview = profile.mode === "self" && profile.cvUrl ? "Uploaded" : "Not added";
 
   return (
     <ScrollView className="flex-1" contentContainerClassName="p-4 gap-4">
@@ -192,6 +195,23 @@ export default function EditProfileHubScreen() {
               <ListGroup.ItemContent>
                 <ListGroup.ItemTitle>Bio & Links</ListGroup.ItemTitle>
                 <ListGroup.ItemDescription>{bioPreview}</ListGroup.ItemDescription>
+              </ListGroup.ItemContent>
+              <ListGroup.ItemSuffix>
+                <ChevronRightIcon size={16} />
+              </ListGroup.ItemSuffix>
+            </ListGroup.Item>
+          </PressableFeedback.Scale>
+        </PressableFeedback>
+
+        <PressableFeedback animation={false} onPress={() => router.push("/profile/edit/cv")}>
+          <PressableFeedback.Scale>
+            <ListGroup.Item>
+              <ListGroup.ItemPrefix>
+                <FileIcon size={20} />
+              </ListGroup.ItemPrefix>
+              <ListGroup.ItemContent>
+                <ListGroup.ItemTitle>CV</ListGroup.ItemTitle>
+                <ListGroup.ItemDescription>{cvPreview}</ListGroup.ItemDescription>
               </ListGroup.ItemContent>
               <ListGroup.ItemSuffix>
                 <ChevronRightIcon size={16} />
