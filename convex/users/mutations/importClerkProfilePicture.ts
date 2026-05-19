@@ -11,21 +11,24 @@ export const getProfilePictureFileId = internalQuery({
   },
 });
 
-export const patchProfilePictureFileId = internalMutation({
+export const patchProfilePictureFileIdIfEmpty = internalMutation({
   args: { userId: v.id("users"), fileId: v.id("_storage") },
   handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user || user.profilePictureFileId) return false;
     await ctx.db.patch(args.userId, { profilePictureFileId: args.fileId });
+    return true;
   },
 });
 
-export const backfillClerkProfilePicture = internalAction({
+export const importClerkProfilePicture = internalAction({
   args: {
     userId: v.id("users"),
     imageUrl: v.string(),
   },
   handler: async (ctx, args) => {
     const existing: string | null = await ctx.runQuery(
-      internal.users.mutations.backfillClerkProfilePicture.getProfilePictureFileId,
+      internal.users.mutations.importClerkProfilePicture.getProfilePictureFileId,
       { userId: args.userId },
     );
     if (existing) return;
@@ -36,9 +39,13 @@ export const backfillClerkProfilePicture = internalAction({
     const blob = await response.blob();
     const fileId = await ctx.storage.store(blob);
 
-    await ctx.runMutation(
-      internal.users.mutations.backfillClerkProfilePicture.patchProfilePictureFileId,
+    const applied: boolean = await ctx.runMutation(
+      internal.users.mutations.importClerkProfilePicture.patchProfilePictureFileIdIfEmpty,
       { userId: args.userId, fileId },
     );
+
+    if (!applied) {
+      await ctx.storage.delete(fileId);
+    }
   },
 });

@@ -34,10 +34,13 @@ export const setProfilePicture = mutation({
       throw new ConvexError("Image must be 5 MB or smaller");
     }
 
-    if (user.profilePictureFileId) {
-      await ctx.storage.delete(user.profilePictureFileId);
-    }
+    const previousFileId = user.profilePictureFileId;
+    if (previousFileId === args.fileId) return;
 
     await ctx.db.patch(user._id, { profilePictureFileId: args.fileId });
+
+    if (previousFileId) {
+      await ctx.storage.delete(previousFileId);
+    }
   },
 });

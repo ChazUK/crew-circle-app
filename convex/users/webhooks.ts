@@ -23,7 +23,7 @@ export const userCreated = internalMutation({
     if (profilePictureUrl) {
       await ctx.scheduler.runAfter(
         0,
-        internal.users.mutations.backfillClerkProfilePicture.backfillClerkProfilePicture,
+        internal.users.mutations.importClerkProfilePicture.importClerkProfilePicture,
         { userId, imageUrl: profilePictureUrl },
       );
     }

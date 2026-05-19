@@ -7,7 +7,7 @@ import schema from "../../schema";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
-describe("backfillClerkProfilePicture", () => {
+describe("importClerkProfilePicture", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "fetch",
@@ -20,6 +20,7 @@ describe("backfillClerkProfilePicture", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -33,10 +34,10 @@ describe("backfillClerkProfilePicture", () => {
       }),
     );
 
-    await t.action(
-      internal.users.mutations.backfillClerkProfilePicture.backfillClerkProfilePicture,
-      { userId, imageUrl: "https://img.clerk.com/fake.jpg" },
-    );
+    await t.action(internal.users.mutations.importClerkProfilePicture.importClerkProfilePicture, {
+      userId,
+      imageUrl: "https://img.clerk.com/fake.jpg",
+    });
 
     const user = await t.run((ctx) => ctx.db.get(userId));
     expect(user?.profilePictureFileId).toBeDefined();
@@ -57,10 +58,10 @@ describe("backfillClerkProfilePicture", () => {
       }),
     );
 
-    await t.action(
-      internal.users.mutations.backfillClerkProfilePicture.backfillClerkProfilePicture,
-      { userId, imageUrl: "https://img.clerk.com/ignored.jpg" },
-    );
+    await t.action(internal.users.mutations.importClerkProfilePicture.importClerkProfilePicture, {
+      userId,
+      imageUrl: "https://img.clerk.com/ignored.jpg",
+    });
 
     const user = await t.run((ctx) => ctx.db.get(userId));
     expect(user?.profilePictureFileId).toBe(existingFileId);
